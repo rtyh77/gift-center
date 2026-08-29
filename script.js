@@ -25,16 +25,36 @@ const cartItems = document.getElementById('cartItems');
 const totalAmount = document.getElementById('totalAmount');
 const checkoutModal = document.getElementById('checkoutModal');
 
-// دالة مجانية لجلب عنوان IP الزائر
+// دالة متطورة لجلب عنوان IP عبر 3 سيرفرات بديلة لمنع الحجب
 async function getUserIP() {
+    // 1. المحاولة الأولى عبر ipify
     try {
-        const response = await fetch('https://api.ipify.org?format=json');
-        const data = await response.json();
-        return data.ip || "غير معروف";
-    } catch (error) {
-        console.error("تعذر جلب IP الزائر:", error);
-        return "غير معروف";
+        const res1 = await fetch('https://api.ipify.org?format=json');
+        const data1 = await res1.json();
+        if (data1.ip) return data1.ip;
+    } catch (e1) {
+        console.warn("فشلت المحاولة الأولى عبر ipify، جاري تجربة السيرفر البديل...");
     }
+
+    // 2. المحاولة الثانية عبر ipapi
+    try {
+        const res2 = await fetch('https://ipapi.co/json/');
+        const data2 = await res2.json();
+        if (data2.ip) return data2.ip;
+    } catch (e2) {
+        console.warn("فشلت المحاولة الثانية عبر ipapi، جاري تجربة السيرفر الثالث...");
+    }
+
+    // 3. المحاولة الثالثة عبر ip-api
+    try {
+        const res3 = await fetch('https://api.ipify.org');
+        const text3 = await res3.text();
+        if (text3) return text3.trim();
+    } catch (e3) {
+        console.error("فشلت جميع محاولات جلب الـ IP");
+    }
+
+    return "غير معروف";
 }
 
 // جلب المنتجات من قاعدة البيانات
