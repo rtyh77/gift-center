@@ -25,6 +25,18 @@ const cartItems = document.getElementById('cartItems');
 const totalAmount = document.getElementById('totalAmount');
 const checkoutModal = document.getElementById('checkoutModal');
 
+// دالة مجانية لجلب عنوان IP الزائر
+async function getUserIP() {
+    try {
+        const response = await fetch('https://api.ipify.org?format=json');
+        const data = await response.json();
+        return data.ip || "غير معروف";
+    } catch (error) {
+        console.error("تعذر جلب IP الزائر:", error);
+        return "غير معروف";
+    }
+}
+
 // جلب المنتجات من قاعدة البيانات
 async function loadProducts() {
     try {
@@ -98,18 +110,22 @@ document.getElementById('checkoutBtn').addEventListener('click', () => {
 });
 document.getElementById('cancelOrder').addEventListener('click', () => checkoutModal.style.display = 'none');
 
-// إرسال الطلب إلى Firebase
+// إرسال الطلب إلى Firebase مع جلب الـ IP
 document.getElementById('orderForm').addEventListener('submit', async (e) => {
     e.preventDefault();
     const name = document.getElementById('custName').value;
     const phone = document.getElementById('custPhone').value;
     const address = document.getElementById('custAddress').value;
 
+    // جلب عنوان IP الزائر قبل الحفظ
+    const clientIP = await getUserIP();
+
     try {
         await addDoc(collection(db, "orders"), {
             customerName: name,
             phone: phone,
             address: address,
+            ipAddress: clientIP, // حفظ عنوان الـ IP
             items: cart,
             total: cart.reduce((t, i) => t + (i.price * i.qty), 0),
             createdAt: serverTimestamp()
@@ -120,6 +136,7 @@ document.getElementById('orderForm').addEventListener('submit', async (e) => {
         updateCartUI();
         checkoutModal.style.display = 'none';
     } catch (error) {
+        console.error("خطأ أثناء إرسال الطلب:", error);
         alert("حدث خطأ أثناء إرسال الطلب، يرجى المحاولة لاحقاً.");
     }
 });
