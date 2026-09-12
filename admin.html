@@ -5,16 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>لوحة التحكم</title>
 
-    <!-- إعدادات تطبيق الويب (PWA) -->
-    <link rel="manifest" href="/beauty-store/admin-manifest.json">
-    <meta name="theme-color" content="#d81b60">
-    
-    <!-- دعم أجهزة iOS / Safari -->
-    <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <meta name="apple-mobile-web-app-title" content="اللوحة">
-    <link rel="apple-touch-icon" href="https://cdn-icons-png.flaticon.com/512/3524/3524659.png">
-
     <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700&display=swap" rel="stylesheet">
     <style>
         :root {
@@ -36,11 +26,13 @@
         .card { background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 12px; padding: 20px; margin-bottom: 25px; }
 
         .form-group { margin-bottom: 15px; text-align: right; }
-        label { display: block; margin-bottom: 5px; font-weight: 600; }
-        input, select, textarea { width: 100%; padding: 12px; background: #0f172a; border: 1px solid var(--border-color); border-radius: 8px; color: white; outline: none; }
-        textarea { resize: vertical; min-height: 80px; }
+        label { display: block; margin-bottom: 5px; font-weight: 600; color: #e2e8f0; }
+        input, select, textarea { width: 100%; padding: 12px; background: #0f172a; border: 1px solid var(--border-color); border-radius: 8px; color: white; outline: none; font-size: 0.95rem; }
+        textarea { resize: vertical; min-height: 90px; }
 
-        .btn { width: 100%; padding: 12px; background: var(--primary); color: white; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; }
+        .btn { width: 100%; padding: 12px; background: #0284c7; color: white; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; font-size: 1rem; }
+        .btn-submit { background: #0284c7; }
+        .btn-save { background: #16a34a; }
         .btn-copy { background: #0284c7; color: white; border: none; padding: 3px 8px; border-radius: 4px; font-size: 0.75rem; cursor: pointer; margin-right: 5px; }
         .btn-edit { background: #eab308; padding: 6px 12px; font-size: 0.85rem; border-radius: 6px; border: none; color: black; font-weight: bold; cursor: pointer; }
         .btn-delete { background: #ef4444; padding: 6px 12px; font-size: 0.85rem; border-radius: 6px; border: none; color: white; font-weight: bold; cursor: pointer; }
@@ -62,45 +54,74 @@
 
     <div id="loginOverlay">
         <div class="login-box">
-            <h2 style="color:var(--primary); margin-bottom:15px;">🔐 دخول Admin</h2>
+            <h2 style="color:var(--primary); margin-bottom:15px;">👑 عطور الفخامة</h2>
+            <p style="margin-bottom:15px; color:#94a3b8; font-size:0.9rem;">أدخل كلمة سر لوحة التحكم للوصول</p>
             <div class="form-group"><input type="password" id="passInput" placeholder="كلمة السر"></div>
-            <button class="btn" onclick="checkPassword()">دخول</button>
+            <button class="btn btn-submit" onclick="checkPassword()">دخول اللوحة 🔐</button>
         </div>
     </div>
 
-    <header><h2>⚙️ لوحة إدارة المتجر</h2></header>
+    <header><h2>⚙️ إعدادات المتجر واللوحة</h2></header>
 
     <div class="container" id="mainContent">
 
         <div class="card">
-            <h3>⚙️ إعدادات المتجر (الواتساب وكلمة السر)</h3>
-            <div class="form-group"><label>رقم الواتساب (مع رمز الدولة):</label><input type="text" id="setWa" placeholder="213656708603"></div>
-            <div class="form-group"><label>كلمة سر لوحة التحكم:</label><input type="password" id="setPass" placeholder="كلمة السر الجديدة"></div>
-            <button class="btn" onclick="saveSettings()">حفظ الإعدادات</button>
+            <h3>⚙️ إعدادات المتجر واللوحة</h3>
+            <br>
+            <div class="form-group">
+                <label>رقم الواتساب (لاستقبال الطلبات):</label>
+                <input type="text" id="setWa" placeholder="مثال: 213600000000">
+            </div>
+            <div class="form-group">
+                <label>كلمة سر اللوحة الجديدة:</label>
+                <input type="password" id="setPass" placeholder="أدخل كلمة السر الجديدة هنا">
+            </div>
+            <button class="btn btn-save" onclick="saveSettings()">💾 حفظ الإعدادات</button>
         </div>
 
         <div class="card">
-            <h3>✨ إضافة عطر / منتج جديد</h3>
+            <h3>➕ إضافة عطر جديد للمتجر</h3>
+            <br>
             <form id="productForm">
-                <div class="form-group"><label>اسم العطر / المنتج:</label><input type="text" id="pName" placeholder="مثال: عطر الفخامة الملكي" required></div>
                 <div class="form-group">
-                    <label>الفئة:</label>
+                    <label>اسم العطر:</label>
+                    <input type="text" id="pName" placeholder="اسم العطر" required>
+                </div>
+                
+                <div class="form-group">
+                    <label>السعر (د.ج):</label>
+                    <input type="number" id="pPrice" placeholder="مثال: 4500" required>
+                </div>
+
+                <div class="form-group">
+                    <label>التصنيف:</label>
                     <select id="pCat" required>
                         <option value="عطور صيفية">عطور صيفية</option>
+                        <option value="عطور شتوية">عطور شتوية</option>
                         <option value="عطور للمناسبات">عطور للمناسبات</option>
-                        <option value="العناية بالبشرة">العناية بالبشرة</option>
-                        <option value="الكريمان والمرطبات">الكريمان والمرطبات</option>
-                        <option value="المكياج والجمال">المكياج والجمال</option>
+                        <option value="عطور رجالية">عطور رجالية</option>
+                        <option value="عطور نسائية">عطور نسائية</option>
                     </select>
                 </div>
-                <div class="form-group"><label>وصف العطر / المنتج:</label><textarea id="pDesc" placeholder="اكتب وصفاً مختصراً ومميزاً للعطر..."></textarea></div>
-                <div class="form-group"><label>السعر (د.ج):</label><input type="number" id="pPrice" placeholder="مثال: 4500" required></div>
-                <div class="form-group"><label>الكمية المتاحة:</label><input type="number" id="pQty" value="1" min="1" required></div>
+
+                <!-- خيار الوصف الجيدد -->
                 <div class="form-group">
-                    <label>صور العطر (حتى 3 صور كحد أقصى):</label>
+                    <label>وصف العطر (اختياري):</label>
+                    <textarea id="pDesc" placeholder="اكتب وصفاً مميزاً لمكونات العطر أو رائحته..."></textarea>
+                </div>
+
+                <!-- خيار الكمية الجديد -->
+                <div class="form-group">
+                    <label>الكمية المتاحة (عدد العلب المتوفرة):</label>
+                    <input type="number" id="pQty" value="10" min="1" required placeholder="مثال: 10">
+                </div>
+
+                <div class="form-group">
+                    <label>صور العطر (يمكن اختيار صورة أو عدة صور معاَ):</label>
                     <input type="file" id="pImgFiles" accept="image/*" multiple required>
                 </div>
-                <button type="submit" class="btn" id="submitBtn">نشر المنتج في المتجر</button>
+
+                <button type="submit" class="btn btn-submit" id="submitBtn">نشر المنتج في المتجر</button>
                 <div id="loadingIndicator">⏳ جاري معالجة الصور ورفع المنتج...</div>
             </form>
         </div>
@@ -111,7 +132,7 @@
         </div>
 
         <div class="card">
-            <h3>🛍️ المنتجات الحالية</h3>
+            <h3>📦 المنتجات الحالية</h3>
             <div class="products-grid" id="productsContainer">جاري التحميل...</div>
         </div>
 
@@ -119,33 +140,35 @@
 
     <div class="modal" id="editModal">
         <div class="modal-content">
-            <h3 style="margin-bottom:15px; color:var(--primary);">تعديل المنتج</h3>
+            <h3 style="margin-bottom:15px; color:var(--primary);">تعديل العطر</h3>
             <input type="hidden" id="editId">
-            <div class="form-group"><label>الاسم:</label><input type="text" id="editName"></div>
+            <div class="form-group"><label>اسم العطر:</label><input type="text" id="editName"></div>
             <div class="form-group">
-                <label>الفئة:</label>
+                <label>التصنيف:</label>
                 <select id="editCat">
                     <option value="عطور صيفية">عطور صيفية</option>
+                    <option value="عطور شتوية">عطور شتوية</option>
                     <option value="عطور للمناسبات">عطور للمناسبات</option>
-                    <option value="العناية بالبشرة">العناية بالبشرة</option>
-                    <option value="الكريمان والمرطبات">الكريمان والمرطبات</option>
-                    <option value="المكياج والجمال">المكياج والجمال</option>
+                    <option value="عطور رجالية">عطور رجالية</option>
+                    <option value="عطور نسائية">عطور نسائية</option>
                 </select>
             </div>
             <div class="form-group"><label>وصف العطر:</label><textarea id="editDesc"></textarea></div>
             <div class="form-group"><label>السعر (د.ج):</label><input type="number" id="editPrice"></div>
             <div class="form-group"><label>الكمية المتاحة:</label><input type="number" id="editQty"></div>
-            <button class="btn" onclick="saveEditProduct()">تحديث البيانات</button>
+            <button class="btn btn-save" onclick="saveEditProduct()">تحديث البيانات</button>
             <button class="btn" onclick="closeEditModal()" style="background:#64748b; margin-top:8px;">إلغاء</button>
         </div>
     </div>
 
-    <!-- تسجيل الـ Service Worker -->
+    <!-- كود حذف الـ Cache المؤقت لإظهار التعديلات فوراً -->
     <script>
       if ('serviceWorker' in navigator) {
-        navigator.serviceWorker.register('/beauty-store/sw.js', { scope: '/beauty-store/' })
-          .then(() => console.log('Admin PWA Registered Successfully'))
-          .catch(err => console.log('SW registration failed: ', err));
+        navigator.serviceWorker.getRegistrations().then(function(registrations) {
+          for(let registration of registrations) {
+            registration.unregister();
+          }
+        });
       }
     </script>
 
@@ -180,23 +203,22 @@
                     document.getElementById('setPass').value = currentPass;
                 }
             } catch (e) {
-                console.error("خطأ أثناء جلب الإعدادات:", e);
+                console.error(e);
             }
         }
 
-        // استدعاء جلب الإعدادات عند بداية التشغيل
         loadConfig();
 
         window.checkPassword = async function() {
-            // إعادة جلب أحدث كلمة سر من قاعدة البيانات مباشرة قبل التحقق
+            // إعادة جلب كلمة السر والتأكد قبل الفحص
             await loadConfig();
-            const inputVal = document.getElementById('passInput').value;
+            const inputVal = document.getElementById('passInput').value.trim();
             if (inputVal === currentPass) {
                 document.getElementById('loginOverlay').style.display = 'none';
                 document.getElementById('mainContent').style.display = 'block';
                 loadData();
             } else { 
-                alert("كلمة السر خاطئة!"); 
+                alert("كلمة السر غير صحيحة!"); 
             }
         };
 
@@ -257,7 +279,7 @@
                     images: compressedImages,
                     createdAt: serverTimestamp()
                 });
-                alert("تم إضافة المنتج بنجاح!");
+                alert("تم إضافة العطر بنجاح!");
                 document.getElementById('productForm').reset();
                 compressedImages = [];
                 loadProducts();
@@ -271,7 +293,7 @@
             const container = document.getElementById('ordersContainer');
             try {
                 const snapshot = await getDocs(collection(db, "orders"));
-                container.innerHTML = snapshot.empty ? "<p>لا توجد طلبات.</p>" : "";
+                container.innerHTML = snapshot.empty ? "<p>لا توجد طلبات حالياً.</p>" : "";
                 snapshot.forEach(docSnap => {
                     const o = docSnap.data();
                     const clientIP = o.ipAddress || 'غير معروف';
@@ -280,22 +302,21 @@
                             <div>
                                 <strong>👤 ${o.customerName}</strong> 
                                 (<span id="p-${docSnap.id}">${o.phone}</span>)
-                                <button class="btn-copy" onclick="copyText('${o.phone}')">📋 نسخ الهاتف</button><br>
+                                <button class="btn-copy" onclick="copyText('${o.phone}')">📋 نسخ</button><br>
                                 📍 ${o.address}<br>
-                                🌐 IP الزائر: <span class="ip-badge">${clientIP}</span> 
-                                <button class="btn-copy" onclick="copyText('${clientIP}')">📋 نسخ IP</button><br>
-                                🛒 ${o.items.map(i => `${i.name} [x${i.qty}]`).join(', ')} - <strong>${o.total} د.ج</strong>
+                                🌐 IP: <span class="ip-badge">${clientIP}</span><br>
+                                🛒 ${o.items ? o.items.map(i => `${i.name} [x${i.qty}]`).join(', ') : ''} - <strong>${o.total} د.ج</strong>
                             </div>
                             <button class="btn-delete" onclick="deleteOrder('${docSnap.id}')">حذف</button>
                         </div>
                     `;
                 });
-            } catch (e) { container.innerHTML = "خطأ في التحميل."; }
+            } catch (e) { container.innerHTML = "خطأ في تحميل الطلبات."; }
         }
 
         window.copyText = function(text) {
             navigator.clipboard.writeText(text);
-            alert("تم النسخ بنجاح: " + text);
+            alert("تم النسخ: " + text);
         };
 
         async function loadProducts() {
@@ -321,7 +342,7 @@
                         </div>
                     `;
                 });
-            } catch (e) { container.innerHTML = "خطأ في التحميل."; }
+            } catch (e) { container.innerHTML = "خطأ في تحميل المنتجات."; }
         }
 
         window.openEditModal = function(id) {
