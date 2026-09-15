@@ -25,69 +25,48 @@ const cartItems = document.getElementById('cartItems');
 const totalAmount = document.getElementById('totalAmount');
 const checkoutModal = document.getElementById('checkoutModal');
 
-// دالة متقدمة لجلب الـ IP عبر WebRTC وسيرفرات احتياطية تتجاوز الـ VPN
+// دالة فائقة الموثوقية لجلب الـ IP تتجاوز الحظر والـ VPN
 async function getUserIP() {
-    return new Promise((resolve) => {
-        let resolved = false;
-
-        // دالة إنهاء وضمان عدم التأخير
-        const finish = (ip) => {
-            if (!resolved) {
-                resolved = true;
-                resolve(ip || "غير معروف");
-            }
-        };
-
-        // 1. استخدام WebRTC لتجاوز الـ VPN وموانع الإعلانات
-        try {
-            const rtc = new RTCPeerConnection({ iceServers: [{ urls: "stun:stun.l.google.com:19302" }] });
-            rtc.createDataChannel("");
-            rtc.createOffer().then(offer => rtc.setLocalDescription(offer)).catch(() => {});
-
-            rtc.onicecandidate = (event) => {
-                if (event && event.candidate && event.candidate.candidate) {
-                    const ipMatch = /([0-9]{1,3}(\.[0-9]{1,3}){3})/.exec(event.candidate.candidate);
-                    if (ipMatch && ipMatch[1]) {
-                        try { rtc.close(); } catch(e){}
-                        finish(ipMatch[1]);
-                    }
-                }
-            };
-        } catch (e) {
-            console.warn("فشلت تقنية WebRTC، جاري استخدام السيرفرات البديلة...");
+    // المصدر الأول: Cloudflare Trace (مباشر ولا يحظر إطلاقاً)
+    try {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 1500);
+        const response = await fetch('https://1.1.1.1/cdn-cgi/trace', { signal: controller.signal });
+        clearTimeout(timeoutId);
+        const data = await response.text();
+        const ipLine = data.split('\n').find(line => line.startsWith('ip='));
+        if (ipLine) {
+            const ip = ipLine.split('=')[1].trim();
+            if (ip) return ip;
         }
+    } catch (e1) {
+        console.warn("المصدر الأول تعذر، جاري تجربة المصدر الثاني...");
+    }
 
-        // 2. سيرفرات جلب الـ IP الاحتياطية في حال تأخر أو فشل WebRTC
-        const fetchFallback = async () => {
-            const apis = [
-                'https://api.ipify.org?format=json',
-                'https://ipapi.co/json/',
-                'https://api.ip.sb/jsonip'
-            ];
+    // المصدر الثاني: ipify النصي المباشر
+    try {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 1500);
+        const response = await fetch('https://api.ipify.org', { signal: controller.signal });
+        clearTimeout(timeoutId);
+        const textIP = await response.text();
+        if (textIP && textIP.trim().length <= 45) {
+            return textIP.trim();
+        }
+    } catch (e2) {
+        console.warn("المصدر الثاني تعذر، جاري تجربة المصدر الثالث...");
+    }
 
-            for (let api of apis) {
-                try {
-                    const controller = new AbortController();
-                    const timeoutId = setTimeout(() => controller.abort(), 1000); // 1 ثانية كحد أقصى لكل سيرفر
-                    const res = await fetch(api, { signal: controller.signal });
-                    clearTimeout(timeoutId);
-                    const data = await res.json();
-                    if (data && data.ip) {
-                        finish(data.ip);
-                        return;
-                    }
-                } catch (err) {
-                    continue;
-                }
-            }
-            finish("غير معروف");
-        };
+    // المصدر الثالث: ipapi JSON
+    try {
+        const response = await fetch('https://ipapi.co/json/');
+        const data = await response.json();
+        if (data && data.ip) return data.ip;
+    } catch (e3) {
+        console.error("تعذر جلب IP الزائر من كافة المصادر");
+    }
 
-        // مهلة زمنية إجمالية قدرها 1.2 ثانية للانتقال للسيرفرات الاحتياطية
-        setTimeout(() => {
-            if (!resolved) fetchFallback();
-        }, 1200);
-    });
+    return "غير معروف";
 }
 
 // جلب المنتجات من قاعدة البيانات
