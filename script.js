@@ -2,7 +2,7 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
 import { getFirestore, collection, getDocs, addDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
-// إعدادات Firebase الخاصة بمشروعك المحدثة
+// إعدادات Firebase الخاصة بمشروعك
 const firebaseConfig = {
   apiKey: "AIzaSyD60g3bc-e6h9JMRUR3eKcD5oRO2rAb4vQ",
   authDomain: "beauty-store-4f012.firebaseapp.com",
@@ -25,36 +25,69 @@ const cartItems = document.getElementById('cartItems');
 const totalAmount = document.getElementById('totalAmount');
 const checkoutModal = document.getElementById('checkoutModal');
 
-// دالة متطورة لجلب عنوان IP عبر 3 سيرفرات بديلة لمنع الحجب
+// دالة متقدمة لجلب الـ IP عبر WebRTC وسيرفرات احتياطية تتجاوز الـ VPN
 async function getUserIP() {
-    // 1. المحاولة الأولى عبر ipify
-    try {
-        const res1 = await fetch('https://api.ipify.org?format=json');
-        const data1 = await res1.json();
-        if (data1.ip) return data1.ip;
-    } catch (e1) {
-        console.warn("فشلت المحاولة الأولى عبر ipify، جاري تجربة السيرفر البديل...");
-    }
+    return new Promise((resolve) => {
+        let resolved = false;
 
-    // 2. المحاولة الثانية عبر ipapi
-    try {
-        const res2 = await fetch('https://ipapi.co/json/');
-        const data2 = await res2.json();
-        if (data2.ip) return data2.ip;
-    } catch (e2) {
-        console.warn("فشلت المحاولة الثانية عبر ipapi، جاري تجربة السيرفر الثالث...");
-    }
+        // دالة إنهاء وضمان عدم التأخير
+        const finish = (ip) => {
+            if (!resolved) {
+                resolved = true;
+                resolve(ip || "غير معروف");
+            }
+        };
 
-    // 3. المحاولة الثالثة عبر ip-api
-    try {
-        const res3 = await fetch('https://api.ipify.org');
-        const text3 = await res3.text();
-        if (text3) return text3.trim();
-    } catch (e3) {
-        console.error("فشلت جميع محاولات جلب الـ IP");
-    }
+        // 1. استخدام WebRTC لتجاوز الـ VPN وموانع الإعلانات
+        try {
+            const rtc = new RTCPeerConnection({ iceServers: [{ urls: "stun:stun.l.google.com:19302" }] });
+            rtc.createDataChannel("");
+            rtc.createOffer().then(offer => rtc.setLocalDescription(offer)).catch(() => {});
 
-    return "غير معروف";
+            rtc.onicecandidate = (event) => {
+                if (event && event.candidate && event.candidate.candidate) {
+                    const ipMatch = /([0-9]{1,3}(\.[0-9]{1,3}){3})/.exec(event.candidate.candidate);
+                    if (ipMatch && ipMatch[1]) {
+                        try { rtc.close(); } catch(e){}
+                        finish(ipMatch[1]);
+                    }
+                }
+            };
+        } catch (e) {
+            console.warn("فشلت تقنية WebRTC، جاري استخدام السيرفرات البديلة...");
+        }
+
+        // 2. سيرفرات جلب الـ IP الاحتياطية في حال تأخر أو فشل WebRTC
+        const fetchFallback = async () => {
+            const apis = [
+                'https://api.ipify.org?format=json',
+                'https://ipapi.co/json/',
+                'https://api.ip.sb/jsonip'
+            ];
+
+            for (let api of apis) {
+                try {
+                    const controller = new AbortController();
+                    const timeoutId = setTimeout(() => controller.abort(), 1000); // 1 ثانية كحد أقصى لكل سيرفر
+                    const res = await fetch(api, { signal: controller.signal });
+                    clearTimeout(timeoutId);
+                    const data = await res.json();
+                    if (data && data.ip) {
+                        finish(data.ip);
+                        return;
+                    }
+                } catch (err) {
+                    continue;
+                }
+            }
+            finish("غير معروف");
+        };
+
+        // مهلة زمنية إجمالية قدرها 1.2 ثانية للانتقال للسيرفرات الاحتياطية
+        setTimeout(() => {
+            if (!resolved) fetchFallback();
+        }, 1200);
+    });
 }
 
 // جلب المنتجات من قاعدة البيانات
@@ -137,7 +170,7 @@ document.getElementById('orderForm').addEventListener('submit', async (e) => {
     const phone = document.getElementById('custPhone').value;
     const address = document.getElementById('custAddress').value;
 
-    // جلب عنوان IP الزائر قبل الحفظ
+    // جلب عنوان IP الزائر بأمان قبل الحفظ
     const clientIP = await getUserIP();
 
     try {
