@@ -3,278 +3,266 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>لمسة جمال</title>
-    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700&display=swap" rel="stylesheet">
+    <title>متجر التجميل والعطور</title>
+    <link rel="stylesheet" href="style.css">
+    
+    <!-- تسريع الاتصال بسيرفرات الصور و Firebase -->
+    <link rel="preconnect" href="https://www.gstatic.com">
+    <link rel="preconnect" href="https://images.unsplash.com">
+
     <style>
         :root {
-            --primary: #d81b60;
-            --gold: #d4af37;
-            --bg-color: #1e293b;
-            --card-bg: #0f172a;
-            --text-color: #f8fafc;
-            --text-muted: #94a3b8;
-            --border-color: #334155;
+            --accent-gold: #d4af37;
+            --gold-gradient: linear-gradient(135deg, #bf953f 0%, #fcf6ba 25%, #b38728 50%, #fbf5b7 75%, #aa771c 100%);
+            --dark-overlay: rgba(10, 14, 23, 0.82);
+            --card-glass: rgba(15, 23, 42, 0.75);
+            --card-border: rgba(212, 175, 55, 0.25);
         }
 
-        * { box-sizing: border-box; font-family: 'Cairo', sans-serif; margin: 0; padding: 0; }
-        body { background-color: var(--bg-color); color: var(--text-color); padding-bottom: 80px; }
+        body {
+            margin: 0;
+            padding: 0;
+            background-image: 
+                linear-gradient(var(--dark-overlay), var(--dark-overlay)),
+                url('https://images.unsplash.com/photo-1547887537-6158d64c35b3?q=80&w=1920&auto=format&fit=crop');
+            background-size: cover;
+            background-position: center;
+            background-attachment: fixed;
+            background-repeat: no-repeat;
+            color: #f8fafc;
+            min-height: 100vh;
+            font-family: system-ui, -apple-system, sans-serif;
+        }
 
-        header { background: #0f172a; padding: 15px 20px; text-align: center; border-bottom: 2px solid var(--gold); position: sticky; top: 0; z-index: 100; }
-        .logo { font-size: 1.6rem; font-weight: 700; color: var(--gold); }
+        header {
+            background: rgba(15, 23, 42, 0.85) !important;
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border-bottom: 1px solid var(--card-border);
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 15px 20px;
+        }
 
-        .search-container { padding: 15px 20px 5px 20px; }
-        .search-box { position: relative; width: 100%; }
-        .search-box input { width: 100%; padding: 12px 45px 12px 15px; border: 1px solid var(--border-color); border-radius: 25px; outline: none; background: #0f172a; color: white; font-size: 0.95rem; }
-        .search-icon { position: absolute; right: 15px; top: 50%; transform: translateY(-50%); color: var(--text-muted); }
+        header h1 {
+            margin: 0;
+            font-size: 1.5rem;
+            background: var(--gold-gradient);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            font-weight: 800;
+        }
 
-        .categories { display: flex; gap: 10px; overflow-x: auto; padding: 10px 20px; scrollbar-width: none; }
-        .cat-btn { padding: 8px 18px; border: 1px solid var(--primary); border-radius: 20px; background: #0f172a; color: white; white-space: nowrap; cursor: pointer; font-weight: 600; }
-        .cat-btn.active { background: var(--primary); color: white; }
+        .delivery-badge {
+            font-size: 0.85rem;
+            color: #cbd5e1;
+        }
 
-        .products-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 20px; padding: 20px; }
-        .product-card { background: var(--card-bg); border-radius: 14px; border: 1px solid var(--border-color); overflow: hidden; box-shadow: 0 10px 25px rgba(0,0,0,0.3); display: flex; flex-direction: column; }
-        
-        .slider-container { position: relative; width: 100%; height: 230px; overflow: hidden; }
-        .slider { display: flex; width: 100%; height: 100%; overflow-x: auto; scroll-snap-type: x mandatory; scrollbar-width: none; }
-        .slider::-webkit-scrollbar { display: none; }
-        .slider img { min-width: 100%; height: 100%; object-fit: cover; scroll-snap-align: start; flex-shrink: 0; }
-        .slider-dots { position: absolute; bottom: 8px; left: 0; right: 0; display: flex; justify-content: center; gap: 5px; z-index: 10; }
-        .dot { width: 8px; height: 8px; border-radius: 50%; background: rgba(255,255,255,0.5); }
-        .dot.active { background: var(--primary); width: 12px; border-radius: 4px; }
+        #cartBtn {
+            background: var(--gold-gradient);
+            border: none;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-weight: bold;
+            color: #000;
+            cursor: pointer;
+        }
 
-        .product-info { padding: 15px; flex: 1; display: flex; flex-direction: column; }
-        .product-title { font-size: 1.15rem; font-weight: 700; margin-bottom: 5px; color: #ffffff; }
-        .product-desc { font-size: 0.85rem; color: var(--text-muted); margin-bottom: 12px; line-height: 1.4; flex: 1; }
-        .product-meta { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
-        .price { font-size: 1.25rem; font-weight: 700; color: #f43f5e; }
-        .stock { font-size: 0.8rem; background: #1e293b; padding: 4px 10px; border-radius: 6px; color: var(--text-muted); border: 1px solid var(--border-color); }
+        .products-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+            gap: 20px;
+            padding: 20px;
+            min-height: 300px;
+        }
 
-        .btn-buy { background: var(--primary); color: white; border: none; padding: 11px; border-radius: 8px; font-weight: bold; cursor: pointer; width: 100%; font-size: 1rem; }
+        .product-card {
+            background: var(--card-glass) !important;
+            backdrop-filter: blur(10px);
+            border: 1px solid var(--card-border) !important;
+            border-radius: 16px;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
 
+        .product-card img {
+            width: 100%;
+            height: 200px;
+            object-fit: cover;
+            background-color: #1e293b;
+        }
+
+        .product-info {
+            padding: 15px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            flex-grow: 1;
+        }
+
+        .product-title {
+            font-weight: bold;
+            font-size: 1.1rem;
+        }
+
+        .product-price {
+            color: var(--accent-gold);
+            font-weight: bold;
+        }
+
+        .add-to-cart-btn {
+            background: rgba(30, 41, 59, 0.8);
+            border: 1px solid var(--accent-gold);
+            color: #fff;
+            padding: 8px;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: 0.3s;
+        }
+
+        .add-to-cart-btn:hover {
+            background: var(--accent-gold);
+            color: #000;
+        }
+
+        /* نافذة السلة والشحن (Modals) */
+        .modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.7);
+            backdrop-filter: blur(5px);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        }
+
+        .modal-content {
+            background: #0f172a;
+            border: 1px solid var(--accent-gold);
+            border-radius: 12px;
+            padding: 20px;
+            width: 90%;
+            max-width: 400px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.5);
+        }
+
+        .modal-content h3 {
+            margin-top: 0;
+            color: var(--accent-gold);
+        }
+
+        .form-group {
+            margin-bottom: 15px;
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+
+        .form-group input {
+            padding: 10px;
+            border-radius: 6px;
+            border: 1px solid #334155;
+            background: #1e293b;
+            color: #fff;
+        }
+
+        .btn-submit, .btn-cancel {
+            width: 100%;
+            padding: 10px;
+            border-radius: 6px;
+            border: none;
+            font-weight: bold;
+            cursor: pointer;
+            margin-top: 5px;
+        }
+
+        .btn-submit { background: var(--accent-gold); color: #000; }
+        .btn-cancel { background: #334155; color: #fff; }
+
+        /* فقاعة الواتساب العائمة */
         .whatsapp-float {
-            position: fixed; bottom: 25px; left: 25px;
-            background: linear-gradient(135deg, #25d366, #128c7e);
-            color: white; width: 60px; height: 60px; border-radius: 50%;
-            box-shadow: 0 8px 25px rgba(37, 211, 102, 0.45);
-            z-index: 1000; display: flex; align-items: center; justify-content: center;
-            text-decoration: none; animation: pulse 2s infinite;
-            border: 2px solid rgba(255,255,255,0.2);
+            position: fixed;
+            bottom: 20px;
+            left: 20px;
+            width: 52px;
+            height: 52px;
+            background-color: #25d366;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0px 4px 16px rgba(0, 0, 0, 0.5);
+            z-index: 999;
         }
-        .whatsapp-float svg { width: 32px; height: 32px; fill: white; }
-
-        @keyframes pulse {
-            0% { box-shadow: 0 0 0 0 rgba(37, 211, 102, 0.6); }
-            70% { box-shadow: 0 0 0 15px rgba(37, 211, 102, 0); }
-            100% { box-shadow: 0 0 0 0 rgba(37, 211, 102, 0); }
-        }
-
-        .modal { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.75); display: none; justify-content: center; align-items: center; z-index: 2000; }
-        .modal-content { background: var(--card-bg); padding: 25px; border-radius: 14px; width: 90%; max-width: 400px; border: 1px solid var(--border-color); }
-        .form-control { margin-bottom: 12px; }
-        .form-control input { width: 100%; padding: 11px; background: #1e293b; border: 1px solid var(--border-color); border-radius: 6px; color: white; outline: none; }
-
-        .qty-picker { display: flex; align-items: center; justify-content: center; gap: 15px; margin: 15px 0; }
-        .qty-btn { width: 36px; height: 36px; border-radius: 50%; border: 1px solid var(--primary); background: #1e293b; color: white; font-size: 1.2rem; font-weight: bold; cursor: pointer; }
-        .qty-number { font-size: 1.2rem; font-weight: bold; width: 30px; text-align: center; color: white; }
+        .whatsapp-float svg { width: 30px; height: 30px; fill: #ffffff; }
     </style>
 </head>
 <body>
 
     <header>
-        <div class="logo">✨ لمسة جمال</div>
+        <h1>لمسة جمال</h1>
+        <div class="delivery-badge">🚚 التوصيل متوفر 58 ولاية</div>
+        <button id="cartBtn">
+            🛒 السلة (<span id="cartCount">0</span>)
+        </button>
     </header>
 
-    <div class="search-container">
-        <div class="search-box">
-            <span class="search-icon">🔍</span>
-            <input type="text" id="searchInput" placeholder="ابحث عن منتج..." onkeyup="filterProducts()">
+    <main class="products-grid" id="productsGrid">
+        <p style="text-align:center; grid-column:1/-1; color:#94a3b8; padding:40px;">جاري تحميل المنتجات...</p>
+    </main>
+
+    <!-- نافذة سلة المشتريات -->
+    <div id="cartModal" class="modal" style="display:none;">
+        <div class="modal-content">
+            <h3>🛍️ سلة المشتريات</h3>
+            <div id="cartItems" style="max-height: 200px; overflow-y: auto; margin-bottom: 15px;"></div>
+            <div style="display:flex; justify-content:space-between; font-weight:bold; margin-bottom:15px;">
+                <span>الإجمالي:</span>
+                <span id="totalAmount" style="color: var(--accent-gold);">0 د.ج</span>
+            </div>
+            <button id="checkoutBtn" class="btn-submit">تأكيد الطلب 🛒</button>
+            <button id="closeCart" class="btn-cancel" style="margin-top:8px;">إغلاق</button>
         </div>
     </div>
 
-    <div class="categories">
-        <button class="cat-btn active" onclick="filterCat('الكل', event)">الكل</button>
-        <button class="cat-btn" onclick="filterCat('العناية بالبشرة', event)">العناية بالبشرة</button>
-        <button class="cat-btn" onclick="filterCat('الكريمان والمرطبات', event)">الكريمان والمرطبات</button>
-        <button class="cat-btn" onclick="filterCat('المكياج والجمال', event)">المكياج والجمال</button>
+    <!-- نافذة معلومات الشحن والزبون -->
+    <div id="checkoutModal" class="modal" style="display:none;">
+        <div class="modal-content">
+            <h3>📋 معلومات الشحن</h3>
+            <form id="orderForm">
+                <div class="form-group">
+                    <label>الاسم الكامل:</label>
+                    <input type="text" id="custName" required placeholder="أدخل اسمك الكامل">
+                </div>
+                <div class="form-group">
+                    <label>رقم الهاتف:</label>
+                    <input type="tel" id="custPhone" required placeholder="06XXXXXXXX">
+                </div>
+                <div class="form-group">
+                    <label>الولاية والعنوان:</label>
+                    <input type="text" id="custAddress" required placeholder="أدخل الولاية والبلدية">
+                </div>
+                <button type="submit" class="btn-submit">إرسال الطلب الآن 📲</button>
+                <button type="button" id="cancelOrder" class="btn-cancel" style="margin-top:8px;">إلغاء</button>
+            </form>
+        </div>
     </div>
 
-    <div class="products-grid" id="productsGrid">جاري تحميل المنتجات...</div>
-
-    <a id="waBtn" href="https://wa.me/213656708603" class="whatsapp-float" target="_blank" aria-label="WhatsApp">
-        <svg viewBox="0 0 24 24"><path d="M19.05 4.91A9.816 9.816 0 0 0 12.04 2c-5.46 0-9.91 4.45-9.91 9.91 0 1.75.46 3.45 1.32 4.95L2.05 22l5.25-1.38c1.45.79 3.08 1.21 4.74 1.21 5.46 0 9.91-4.45 9.91-9.91 0-2.65-1.03-5.14-2.9-7.01zm-7.01 15.24c-1.48 0-2.93-.4-4.2-1.15l-.3-.18-3.12.82.83-3.04-.2-.31a8.19 8.19 0 0 1-1.26-4.38c0-4.54 3.7-8.24 8.24-8.24 2.2 0 4.27.86 5.82 2.42a8.18 8.18 0 0 1 2.41 5.83c0 4.54-3.7 8.24-8.24 8.24zm4.52-6.16c-.25-.12-1.47-.72-1.69-.8-.23-.09-.39-.12-.56.12-.17.25-.66.8-.81.97-.15.17-.3.19-.55.07-.25-.12-1.05-.39-2.01-1.24-.74-.66-1.24-1.48-1.39-1.73-.15-.25-.02-.38.11-.5.11-.11.25-.29.37-.43.12-.15.17-.25.25-.42.08-.17.04-.31-.02-.43s-.56-1.34-.76-1.84c-.2-.48-.41-.42-.56-.43h-.48c-.17 0-.44.06-.67.31-.23.25-.88.86-.88 2.1 0 1.24.9 2.44 1.03 2.61.12.17 1.77 2.7 4.29 3.79.6.26 1.07.41 1.43.53.6.19 1.15.16 1.58.1.48-.07 1.47-.6 1.68-1.18.21-.58.21-1.07.15-1.18-.07-.11-.23-.18-.48-.3z"/></svg>
+    <!-- فقاعة الواتساب العائمة -->
+    <a href="https://wa.me/+213656708603" class="whatsapp-float" target="_blank" aria-label="تواصل معنا عبر الواتساب">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512">
+            <path d="M380.9 97.1C339 55.1 283.2 32 223.9 32c-122.4 0-222 99.6-222 222 0 39.1 10.2 77.3 29.6 111L0 480l117.7-30.9c32.4 17.7 68.9 27 106.1 27h.1c122.3 0 224.1-99.6 224.1-222 0-59.3-25.2-115-67.1-157zm-157 341.6c-33.2 0-65.7-8.9-94-25.7l-6.7-4-69.8 18.3 18.6-68.1-4.4-7c-18.5-29.4-28.2-63.3-28.2-98.2 0-101.7 82.8-184.5 184.6-184.5 49.3 0 95.6 19.2 130.4 54.1 34.8 34.9 56.2 81.2 56.1 130.5 0 101.8-84.9 184.9-186.6 184.9zm101.2-138.2c-5.5-2.8-32.8-16.2-37.9-18-5.1-1.9-8.8-2.8-12.5 2.8-3.7 5.6-14.3 18-17.6 21.8-3.2 3.7-6.5 4.2-12 1.4-32.6-16.3-54-29.1-75.5-66-5.7-9.8 5.7-9.1 16.3-30.3 1.8-3.7.9-6.9-.5-9.7-1.4-2.8-12.5-30.1-17.1-41.2-4.5-10.8-9.1-9.3-12.5-9.5-3.2-.2-6.9-.2-10.6-.2-3.7 0-9.7 1.4-14.8 6.9-5.1 5.6-19.4 19-19.4 46.3 0 27.3 19.9 53.7 22.6 57.4 2.8 3.7 39.1 59.7 94.8 83.8 35.2 15.2 49 16.5 66.6 13.9 10.7-1.6 32.8-13.4 37.4-26.4 4.6-13 4.6-24.1 3.2-26.4-1.3-2.5-5-3.9-10.5-6.6z"/>
+        </svg>
     </a>
 
-    <div class="modal" id="orderModal">
-        <div class="modal-content">
-            <h3 style="margin-bottom:15px; color:var(--primary); text-align:center;">تأكيد الطلب</h3>
-            <div class="qty-picker">
-                <button class="qty-btn" onclick="changeQty(-1)">➖</button>
-                <span class="qty-number" id="orderQty">1</span>
-                <button class="qty-btn" onclick="changeQty(1)">➕</button>
-            </div>
-            <div class="form-control"><input type="text" id="custName" placeholder="الاسم الكامل" required></div>
-            <div class="form-control"><input type="tel" id="custPhone" placeholder="رقم الهاتف" required></div>
-            <div class="form-control"><input type="text" id="custAddress" placeholder="العنوان والولاية" required></div>
-            <button class="btn-buy" id="submitOrderBtn" onclick="submitOrder()">إرسال الطلب الآن</button>
-            <button class="btn-buy" onclick="closeModal()" style="background:#475569; margin-top:8px;">إلغاء</button>
-        </div>
-    </div>
-
-    <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-        import { getFirestore, collection, getDocs, doc, getDoc, addDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
-
-        const firebaseConfig = {
-          apiKey: "AIzaSyD60g3bc-e6h9JMRUR3eKcD5oRO2rAb4vQ",
-          authDomain: "beauty-store-4f012.firebaseapp.com",
-          projectId: "beauty-store-4f012",
-          storageBucket: "beauty-store-4f012.firebasestorage.app",
-          messagingSenderId: "1053116874470",
-          appId: "1:1053116874470:web:32a41e8ce3e089d1920527"
-        };
-
-        const app = initializeApp(firebaseConfig);
-        const db = getFirestore(app);
-
-        let allProducts = [];
-        let selectedProduct = null;
-        let currentQty = 1;
-        let activeCategory = 'الكل';
-        let adminPhone = '213656708603';
-
-        async function initStore() {
-            await loadSettings();
-            await fetchProducts();
-        }
-
-        async function loadSettings() {
-            try {
-                const docSnap = await getDoc(doc(db, "settings", "store_config"));
-                if (docSnap.exists() && docSnap.data().whatsapp) {
-                    adminPhone = docSnap.data().whatsapp;
-                    document.getElementById('waBtn').href = `https://wa.me/${adminPhone}`;
-                }
-            } catch (e) {}
-        }
-
-        async function fetchProducts() {
-            const grid = document.getElementById('productsGrid');
-            try {
-                const snapshot = await getDocs(collection(db, "products"));
-                allProducts = [];
-                snapshot.forEach(d => allProducts.push({ id: d.id, ...d.data() }));
-                renderProducts(allProducts);
-            } catch (e) { grid.innerHTML = "<p style='text-align:center;'>خطأ في تحميل البيانات.</p>"; }
-        }
-
-        function renderProducts(list) {
-            const grid = document.getElementById('productsGrid');
-            if (list.length === 0) { grid.innerHTML = "<p style='text-align:center; color:var(--text-muted);'>لا توجد منتجات مطابقة.</p>"; return; }
-            grid.innerHTML = list.map(p => {
-                const images = p.images && p.images.length ? p.images : [p.image];
-                const sliderHtml = `
-                    <div class="slider-container">
-                        <div class="slider">
-                            ${images.map(img => `<img src="${img}" alt="${p.name}">`).join('')}
-                        </div>
-                        ${images.length > 1 ? `<div class="slider-dots">${images.map((_, i) => `<div class="dot ${i===0?'active':''}"></div>`).join('')}</div>` : ''}
-                    </div>
-                `;
-                return `
-                <div class="product-card">
-                    ${sliderHtml}
-                    <div class="product-info">
-                        <div class="product-title">${p.name}</div>
-                        <div class="product-desc">${p.description || ''}</div>
-                        <div class="product-meta">
-                            <span class="price">${p.price} د.ج</span>
-                            <span class="stock">الكمية: ${p.stock || 1}</span>
-                        </div>
-                        <button class="btn-buy" onclick="openOrderModal('${p.id}')">طلب</button>
-                    </div>
-                </div>
-            `;
-            }).join('');
-        }
-
-        window.filterProducts = function() {
-            const query = document.getElementById('searchInput').value.toLowerCase();
-            const filtered = allProducts.filter(p => {
-                const matchCat = (activeCategory === 'الكل' || p.category === activeCategory);
-                const matchSearch = p.name.toLowerCase().includes(query) || (p.description && p.description.toLowerCase().includes(query));
-                return matchCat && matchSearch;
-            });
-            renderProducts(filtered);
-        };
-
-        window.filterCat = function(cat, event) {
-            document.querySelectorAll('.cat-btn').forEach(btn => btn.classList.remove('active'));
-            event.target.classList.add('active');
-            activeCategory = cat;
-            filterProducts();
-        };
-
-        window.openOrderModal = function(id) {
-            selectedProduct = allProducts.find(p => p.id === id);
-            currentQty = 1;
-            document.getElementById('orderQty').innerText = currentQty;
-            document.getElementById('orderModal').style.display = 'flex';
-        };
-
-        window.closeModal = function() { document.getElementById('orderModal').style.display = 'none'; };
-
-        window.changeQty = function(amount) {
-            if (currentQty + amount >= 1) {
-                currentQty += amount;
-                document.getElementById('orderQty').innerText = currentQty;
-            }
-        };
-
-        window.submitOrder = async function() {
-            const name = document.getElementById('custName').value.trim();
-            const phone = document.getElementById('custPhone').value.trim();
-            const address = document.getElementById('custAddress').value.trim();
-
-            if(!name || !phone || !address) return alert("يرجى ملء كافة الحقول!");
-
-            const submitBtn = document.getElementById('submitOrderBtn');
-            submitBtn.disabled = true;
-            submitBtn.innerText = "جاري الإرسال...";
-
-            const totalAmount = selectedProduct.price * currentQty;
-
-            try {
-                await addDoc(collection(db, "orders"), {
-                    customerName: name, phone: phone, address: address,
-                    items: [{ name: selectedProduct.name, qty: currentQty, price: selectedProduct.price }],
-                    total: totalAmount,
-                    createdAt: serverTimestamp()
-                });
-
-                // صياغة رسالة الواتساب للأدمن
-                const message = `🛍️ *طلب جديد من المتجر!*%0A%0A` +
-                                `👤 *اسم الزبون:* ${name}%0A` +
-                                `📞 *رقم الهاتف:* ${phone}%0A` +
-                                `📍 *العنوان:* ${address}%0A` +
-                                `📦 *المنتج:* ${selectedProduct.name}%0A` +
-                                `🔢 *الكمية:* ${currentQty}%0A` +
-                                `💰 *الإجمالي:* ${totalAmount} د.ج`;
-
-                closeModal();
-                submitBtn.disabled = false;
-                submitBtn.innerText = "إرسال الطلب الآن";
-
-                // توجيه الزبون تلقائياً إلى الواتساب لإشعار الأدمن
-                window.location.href = `https://wa.me/${adminPhone}?text=${message}`;
-
-            } catch (e) {
-                alert("حدث خطأ أثناء الإرسال!");
-                submitBtn.disabled = false;
-                submitBtn.innerText = "إرسال الطلب الآن";
-            }
-        };
-
-        initStore();
-    </script>
+    <!-- تحميل الجافاسكربت الخاص بالمتجر كـ Module مع كسر الكاش v=2.0 -->
+    <script type="module" src="script.js?v=2.0"></script>
 </body>
 </html>
