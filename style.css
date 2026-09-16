@@ -1,18 +1,17 @@
 /* ==================== إعادة تنسيق الواجهة بالكامل ==================== */
 
-/* إخفاء كافة عناصر المتجر السابقة (Navbar, Categories, Products, Modals, WhatsApp) */
+/* إخفاء عناصر المتجر القديمة فقط (مع إظهار الهاكر والشاشة المخصصة) */
 .navbar, 
 .categories, 
 .products-container, 
 .cart-modal, 
 .checkout-modal, 
 .whatsapp-btn, 
-.whatsapp-float, 
-#hacker-overlay {
+.whatsapp-float {
     display: none !important;
 }
 
-/* ضبط الخلفية لتكون سوداء بالكامل على مستوى الصفحة */
+/* ضبط الخلفية لتكون سوداء بالكامل */
 body {
     background-color: #000000 !important;
     color: #ffffff;
@@ -25,8 +24,8 @@ body {
     overflow: hidden;
 }
 
-/* تنسيق شاشة الهدية الرئيسية */
-#gift-overlay, .overlay-screen {
+/* شاشة العرض الرئيسية (الهدية / الاتصال) */
+.overlay-screen {
     position: fixed;
     top: 0;
     left: 0;
@@ -41,7 +40,12 @@ body {
     text-align: center;
 }
 
-/* بطاقة الهدية */
+/* كلاس الإخفاء للتنقل بين الشاشات */
+.hidden {
+    display: none !important;
+}
+
+/* ==================== شاشة الهدية ==================== */
 .gift-box {
     cursor: pointer;
     padding: 20px;
@@ -60,32 +64,62 @@ body {
     animation: giftPulse 1.8s infinite ease-in-out;
 }
 
-/* النص الأخضر أسفل الهدية */
+/* النص الأخضر (TERMINÉ / العبارة الخضراء) */
 .gift-text {
     color: #00ff66 !important;
     font-size: 1.3rem;
     font-weight: bold;
     text-shadow: 0 0 8px rgba(0, 255, 102, 0.4);
-    direction: rtl;
+    direction: ltr;
 }
 
-/* النص الذي يظهر بعد الضغط (تم الارسال) */
-.sent-text {
-    color: #00ff66 !important;
-    font-size: 1.5rem;
+/* ==================== شاشة الاتصال بالنظام الخارجي ==================== */
+#hacker-overlay {
+    background-color: #000000 !important;
+    font-family: 'Courier New', Courier, monospace;
+}
+
+.hacker-content {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    max-width: 90%;
+}
+
+/* العبارة الحمراء الفرنسية (CONNEXION ÉTABLIE) */
+.hacker-title {
+    color: #ff0000 !important;
+    font-size: 1.6rem;
     font-weight: bold;
-    text-shadow: 0 0 10px rgba(0, 255, 102, 0.6);
-    direction: rtl;
-    animation: textFadeIn 0.5s ease-in-out;
+    letter-spacing: 1px;
+    margin-bottom: 20px;
+    text-align: center;
+    direction: ltr;
+    text-shadow: 0 0 10px rgba(255, 0, 0, 0.6);
+    animation: textBlink 0.8s infinite;
 }
 
+/* الأكواد الخضراء المتتابعة بالأسفل */
+.matrix-code {
+    color: #00ff66 !important;
+    font-size: 0.85rem;
+    line-height: 1.6;
+    text-align: left;
+    direction: ltr;
+    max-height: 200px;
+    overflow: hidden;
+    width: 100%;
+    font-family: monospace;
+}
+
+/* ==================== الانيميشن ==================== */
 @keyframes giftPulse {
     0% { transform: scale(1); }
     50% { transform: scale(1.08); }
     100% { transform: scale(1); }
 }
 
-@keyframes textFadeIn {
-    from { opacity: 0; transform: translateY(5px); }
-    to { opacity: 1; transform: translateY(0); }
+@keyframes textBlink {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.2; }
 }
