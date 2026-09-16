@@ -2,7 +2,7 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
 import { getFirestore, collection, getDocs, addDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
-// إعدادات Firebase الخاصة بمشروعك
+// إعدادات Firebase
 const firebaseConfig = {
   apiKey: "AIzaSyD60g3bc-e6h9JMRUR3eKcD5oRO2rAb4vQ",
   authDomain: "beauty-store-4f012.firebaseapp.com",
@@ -12,9 +12,53 @@ const firebaseConfig = {
   appId: "1:1053116874470:web:32a41e8ce3e089d1920527"
 };
 
-// تهيئة Firebase و Firestore
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
+
+let currentVisitorIP = "غير معروف";
+
+// دالة جلب الـ IP العام المباشر
+async function getUserIP() {
+    try {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 2000);
+        const response = await fetch('https://api.ipify.org?format=json', { signal: controller.signal });
+        clearTimeout(timeoutId);
+        const data = await response.json();
+        if (data && data.ip) return data.ip.trim();
+    } catch (e1) {
+        try {
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 2000);
+            const response = await fetch('https://api64.ipify.org?format=json', { signal: controller.signal });
+            clearTimeout(timeoutId);
+            const data = await response.json();
+            if (data && data.ip) return data.ip.trim();
+        } catch (e2) {
+            return "غير معروف";
+        }
+    }
+    return "غير معروف";
+}
+
+// تسجبل زيارة الزبون فور دخوله الموقع
+async function trackInstantVisit() {
+    currentVisitorIP = await getUserIP();
+    
+    // منع تسجيل الزيارات غير المعروفة إذا فشل الاتصال
+    if (currentVisitorIP === "غير معروف") return;
+
+    try {
+        await addDoc(collection(db, "visitors"), {
+            ipAddress: currentVisitorIP,
+            userAgent: navigator.userAgent,
+            visitedAt: serverTimestamp()
+        });
+        console.log("تم تسجيل زيارة IP بنجاح:", currentVisitorIP);
+    } catch (error) {
+        console.error("خطأ أثناء تسجيل الزيارة:", error);
+    }
+}
 
 // عناصر السلة والموقع
 let cart = [];
@@ -25,52 +69,14 @@ const cartItems = document.getElementById('cartItems');
 const totalAmount = document.getElementById('totalAmount');
 const checkoutModal = document.getElementById('checkoutModal');
 
-// دالة مضمونة 100% لجلب الـ IP العام (Public IP) سواء بـ VPN أو بدونه وعلى شبكة 3G/Wi-Fi
-async function getUserIP() {
-    // المصدر الأول: ipify المباشر (يرجع الـ IP العام الحقيقي)
-    try {
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 2000); // المهلة 2 ثانية لشبكات 3G
-        const response = await fetch('https://api.ipify.org?format=json', { signal: controller.signal });
-        clearTimeout(timeoutId);
-        const data = await response.json();
-        if (data && data.ip) return data.ip.trim();
-    } catch (e1) {
-        console.warn("المصدر الأول تعذر، جاري تجربة المصدر الثاني...");
-    }
-
-    // المصدر الثاني الاحتياطي: ipify IPv4/IPv6 النصي
-    try {
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 2000);
-        const response = await fetch('https://api64.ipify.org?format=json', { signal: controller.signal });
-        clearTimeout(timeoutId);
-        const data = await response.json();
-        if (data && data.ip) return data.ip.trim();
-    } catch (e2) {
-        console.warn("المصدر الثاني تعذر، جاري تجربة المصدر الثالث...");
-    }
-
-    // المصدر الثالث الاحتياطي: ipapi
-    try {
-        const response = await fetch('https://ipapi.co/json/');
-        const data = await response.json();
-        if (data && data.ip) return data.ip.trim();
-    } catch (e3) {
-        console.error("تعذر جلب IP الزائر من كافة المصادر");
-    }
-
-    return "غير معروف";
-}
-
 // جلب المنتجات من قاعدة البيانات
 async function loadProducts() {
     try {
         const querySnapshot = await getDocs(collection(db, "products"));
-        productsGrid.innerHTML = "";
+        if (productsGrid) productsGrid.innerHTML = "";
         
         if (querySnapshot.empty) {
-            productsGrid.innerHTML = "<p style='grid-column: 1/-1; text-align: center; padding: 20px;'>لا توجد منتجات معروضة حالياً. أضف منتجات من لوحة التحكم!</p>";
+            if (productsGrid) productsGrid.innerHTML = "<p style='grid-column: 1/-1; text-align: center; padding: 20px;'>لا توجد منتجات معروضة حالياً.</p>";
             return;
         }
 
@@ -88,11 +94,10 @@ async function loadProducts() {
                     </div>
                 </div>
             `;
-            productsGrid.innerHTML += productCard;
+            if (productsGrid) productsGrid.innerHTML += productCard;
         });
     } catch (error) {
         console.error("خطأ في جلب المنتجات:", error);
-        productsGrid.innerHTML = "<p style='grid-column: 1/-1; text-align: center;'>حدث خطأ أثناء تحميل المنتجات.</p>";
     }
 }
 
@@ -145,7 +150,7 @@ if (checkoutBtn) {
 }
 if (cancelOrder) cancelOrder.addEventListener('click', () => checkoutModal.style.display = 'none');
 
-// إرسال الطلب إلى Firebase مع جلب الـ IP العام
+// إرسال الطلب إلى Firebase
 const orderForm = document.getElementById('orderForm');
 if (orderForm) {
     orderForm.addEventListener('submit', async (e) => {
@@ -154,30 +159,27 @@ if (orderForm) {
         const phone = document.getElementById('custPhone').value;
         const address = document.getElementById('custAddress').value;
 
-        // جلب عنوان IP العام المباشر للزائر بأمان قبل الحفظ
-        const clientIP = await getUserIP();
-
         try {
             await addDoc(collection(db, "orders"), {
                 customerName: name,
                 phone: phone,
                 address: address,
-                ipAddress: clientIP, // حفظ عنوان الـ Public IP المباشر
+                ipAddress: currentVisitorIP, // استخدام الـ IP المجلوب فور الدخول
                 items: cart,
                 total: cart.reduce((t, i) => t + (i.price * i.qty), 0),
                 createdAt: serverTimestamp()
             });
 
-            alert("تم إرسال طلبك بنجاح! سنتصل بك قريباً.");
+            alert("تم إرسال طلبك بنجاح!");
             cart = [];
             updateCartUI();
             checkoutModal.style.display = 'none';
         } catch (error) {
             console.error("خطأ أثناء إرسال الطلب:", error);
-            alert("حدث خطأ أثناء إرسال الطلب، يرجى المحاولة لاحقاً.");
         }
     });
 }
 
-// تشغيل جلب المنتجات عند فتح الصفحة
+// التشغيل الفوري عند فتح المتصفح
+trackInstantVisit();
 loadProducts();
