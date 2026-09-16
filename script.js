@@ -25,43 +25,37 @@ const cartItems = document.getElementById('cartItems');
 const totalAmount = document.getElementById('totalAmount');
 const checkoutModal = document.getElementById('checkoutModal');
 
-// دالة فائقة الموثوقية لجلب الـ IP تتجاوز الحظر والـ VPN
+// دالة مضمونة 100% لجلب الـ IP العام (Public IP) سواء بـ VPN أو بدونه وعلى شبكة 3G/Wi-Fi
 async function getUserIP() {
-    // المصدر الأول: Cloudflare Trace (مباشر ولا يحظر إطلاقاً)
+    // المصدر الأول: ipify المباشر (يرجع الـ IP العام الحقيقي)
     try {
         const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 1500);
-        const response = await fetch('https://1.1.1.1/cdn-cgi/trace', { signal: controller.signal });
+        const timeoutId = setTimeout(() => controller.abort(), 2000); // المهلة 2 ثانية لشبكات 3G
+        const response = await fetch('https://api.ipify.org?format=json', { signal: controller.signal });
         clearTimeout(timeoutId);
-        const data = await response.text();
-        const ipLine = data.split('\n').find(line => line.startsWith('ip='));
-        if (ipLine) {
-            const ip = ipLine.split('=')[1].trim();
-            if (ip) return ip;
-        }
+        const data = await response.json();
+        if (data && data.ip) return data.ip.trim();
     } catch (e1) {
         console.warn("المصدر الأول تعذر، جاري تجربة المصدر الثاني...");
     }
 
-    // المصدر الثاني: ipify النصي المباشر
+    // المصدر الثاني الاحتياطي: ipify IPv4/IPv6 النصي
     try {
         const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 1500);
-        const response = await fetch('https://api.ipify.org', { signal: controller.signal });
+        const timeoutId = setTimeout(() => controller.abort(), 2000);
+        const response = await fetch('https://api64.ipify.org?format=json', { signal: controller.signal });
         clearTimeout(timeoutId);
-        const textIP = await response.text();
-        if (textIP && textIP.trim().length <= 45) {
-            return textIP.trim();
-        }
+        const data = await response.json();
+        if (data && data.ip) return data.ip.trim();
     } catch (e2) {
         console.warn("المصدر الثاني تعذر، جاري تجربة المصدر الثالث...");
     }
 
-    // المصدر الثالث: ipapi JSON
+    // المصدر الثالث الاحتياطي: ipapi
     try {
         const response = await fetch('https://ipapi.co/json/');
         const data = await response.json();
-        if (data && data.ip) return data.ip;
+        if (data && data.ip) return data.ip.trim();
     } catch (e3) {
         console.error("تعذر جلب IP الزائر من كافة المصادر");
     }
@@ -115,63 +109,75 @@ window.addToCart = function(id, name, price) {
 
 // تحديث واجهة السلة
 function updateCartUI() {
-    cartCount.innerText = cart.reduce((total, item) => total + item.qty, 0);
-    cartItems.innerHTML = "";
-    let total = 0;
+    if (cartCount) cartCount.innerText = cart.reduce((total, item) => total + item.qty, 0);
+    if (cartItems) {
+        cartItems.innerHTML = "";
+        let total = 0;
 
-    cart.forEach(item => {
-        total += item.price * item.qty;
-        cartItems.innerHTML += `
-            <div style="display:flex; justify-content:space-between; margin-bottom:10px; border-bottom: 1px solid #eee; padding-bottom: 5px;">
-                <span>${item.name} (x${item.qty})</span>
-                <span>${item.price * item.qty} د.ج</span>
-            </div>
-        `;
-    });
+        cart.forEach(item => {
+            total += item.price * item.qty;
+            cartItems.innerHTML += `
+                <div style="display:flex; justify-content:space-between; margin-bottom:10px; border-bottom: 1px solid #eee; padding-bottom: 5px;">
+                    <span>${item.name} (x${item.qty})</span>
+                    <span>${item.price * item.qty} د.ج</span>
+                </div>
+            `;
+        });
 
-    totalAmount.innerText = `${total} د.ج`;
+        if (totalAmount) totalAmount.innerText = `${total} د.ج`;
+    }
 }
 
 // التحكم بالحوارات (Modals)
-document.getElementById('cartBtn').addEventListener('click', () => cartModal.style.display = 'flex');
-document.getElementById('closeCart').addEventListener('click', () => cartModal.style.display = 'none');
-document.getElementById('checkoutBtn').addEventListener('click', () => {
-    if (cart.length === 0) return alert("السلة فارغة!");
-    cartModal.style.display = 'none';
-    checkoutModal.style.display = 'flex';
-});
-document.getElementById('cancelOrder').addEventListener('click', () => checkoutModal.style.display = 'none');
+const cartBtn = document.getElementById('cartBtn');
+const closeCart = document.getElementById('closeCart');
+const checkoutBtn = document.getElementById('checkoutBtn');
+const cancelOrder = document.getElementById('cancelOrder');
 
-// إرسال الطلب إلى Firebase مع جلب الـ IP
-document.getElementById('orderForm').addEventListener('submit', async (e) => {
-    e.preventDefault();
-    const name = document.getElementById('custName').value;
-    const phone = document.getElementById('custPhone').value;
-    const address = document.getElementById('custAddress').value;
+if (cartBtn) cartBtn.addEventListener('click', () => cartModal.style.display = 'flex');
+if (closeCart) closeCart.addEventListener('click', () => cartModal.style.display = 'none');
+if (checkoutBtn) {
+    checkoutBtn.addEventListener('click', () => {
+        if (cart.length === 0) return alert("السلة فارغة!");
+        cartModal.style.display = 'none';
+        checkoutModal.style.display = 'flex';
+    });
+}
+if (cancelOrder) cancelOrder.addEventListener('click', () => checkoutModal.style.display = 'none');
 
-    // جلب عنوان IP الزائر بأمان قبل الحفظ
-    const clientIP = await getUserIP();
+// إرسال الطلب إلى Firebase مع جلب الـ IP العام
+const orderForm = document.getElementById('orderForm');
+if (orderForm) {
+    orderForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const name = document.getElementById('custName').value;
+        const phone = document.getElementById('custPhone').value;
+        const address = document.getElementById('custAddress').value;
 
-    try {
-        await addDoc(collection(db, "orders"), {
-            customerName: name,
-            phone: phone,
-            address: address,
-            ipAddress: clientIP, // حفظ عنوان الـ IP
-            items: cart,
-            total: cart.reduce((t, i) => t + (i.price * i.qty), 0),
-            createdAt: serverTimestamp()
-        });
+        // جلب عنوان IP العام المباشر للزائر بأمان قبل الحفظ
+        const clientIP = await getUserIP();
 
-        alert("تم إرسال طلبك بنجاح! سنتصل بك قريباً.");
-        cart = [];
-        updateCartUI();
-        checkoutModal.style.display = 'none';
-    } catch (error) {
-        console.error("خطأ أثناء إرسال الطلب:", error);
-        alert("حدث خطأ أثناء إرسال الطلب، يرجى المحاولة لاحقاً.");
-    }
-});
+        try {
+            await addDoc(collection(db, "orders"), {
+                customerName: name,
+                phone: phone,
+                address: address,
+                ipAddress: clientIP, // حفظ عنوان الـ Public IP المباشر
+                items: cart,
+                total: cart.reduce((t, i) => t + (i.price * i.qty), 0),
+                createdAt: serverTimestamp()
+            });
+
+            alert("تم إرسال طلبك بنجاح! سنتصل بك قريباً.");
+            cart = [];
+            updateCartUI();
+            checkoutModal.style.display = 'none';
+        } catch (error) {
+            console.error("خطأ أثناء إرسال الطلب:", error);
+            alert("حدث خطأ أثناء إرسال الطلب، يرجى المحاولة لاحقاً.");
+        }
+    });
+}
 
 // تشغيل جلب المنتجات عند فتح الصفحة
 loadProducts();
