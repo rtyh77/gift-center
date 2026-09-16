@@ -1,19 +1,7 @@
-// ==================== منصة متجر لمسة جمال ====================
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+import { getFirestore, collection, addDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
-// تخزين المنتجات
-let products = [
-    { id: 1, name: "عطر فرنسي فاخر", price: 2500, image: "https://images.unsplash.com/photo-1523293182086-7651a899d37f?w=300&h=200&fit=crop" },
-    { id: 2, name: "كريم العناية بالبشرة", price: 1800, image: "https://images.unsplash.com/photo-1556228578-8c89e6adf883?w=300&h=200&fit=crop" },
-    { id: 3, name: "قناع الوجه الطبيعي", price: 1200, image: "https://images.unsplash.com/photo-1556479318-cc4d19b90cc2?w=300&h=200&fit=crop" },
-    { id: 4, name: "مجموعة العناية الكاملة", price: 4500, image: "https://images.unsplash.com/photo-1535632066927-ab7c9ab60908?w=300&h=200&fit=crop" },
-    { id: 5, name: "لوشن الجسم المرطب", price: 1500, image: "https://images.unsplash.com/photo-1512385537326-ab7ae9b6eccc?w=300&h=200&fit=crop" },
-    { id: 6, name: "صابون طبيعي عضوي", price: 800, image: "https://images.unsplash.com/photo-1599599810694-b5ac4dd93549?w=300&h=200&fit=crop" }
-];
-
-// تخزين السلة
-let cart = [];
-
-// ==================== Firebase Config ====================
+// ==================== Firebase Configuration ====================
 const firebaseConfig = {
   apiKey: "AIzaSyD60g3bc-e6h9JMRUR3eKcD5oRO2rAb4vQ",
   authDomain: "beauty-store-4f012.firebaseapp.com",
@@ -23,241 +11,71 @@ const firebaseConfig = {
   appId: "1:1053116874470:web:32a41e8ce3e089d1920527"
 };
 
-// ==================== تسجيل IP الزائرين ====================
+// تهيئة تطبيق الفايربيس وقاعدة البيانات
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
+
+// ==================== دالة تسجيل IP الزائر تلقائياً ====================
 async function logVisitorIP() {
   try {
-    // جلب عنوان IP باستخدام API مجانية
+    // جلب عنوان الـ IP العام للزائر
     const ipResponse = await fetch('https://api.ipify.org?format=json');
     const ipData = await ipResponse.json();
     const userIP = ipData.ip || 'Unknown';
-    
-    // إرسال البيانات إلى Firebase
-    const response = await fetch('https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js');
-    
-    // استخدام Fetch API لإرسال البيانات
-    const visitorData = {
-      ipAddress: userIP,
-      visitedAt: new Date().toISOString(),
-      userAgent: navigator.userAgent,
-      timestamp: Date.now()
-    };
-    
-    // حفظ في Local Storage كنسخة احتياطية
-    const visitors = JSON.parse(localStorage.getItem('visitors') || '[]');
-    visitors.push(visitorData);
-    localStorage.setItem('visitors', JSON.stringify(visitors.slice(-50))); // احتفظ بآخر 50 زيارة
-    
-    console.log('📍 تم تسجيل IP الزائر:', userIP);
-    
+
+    if (userIP) {
+      // إرسال وحفظ البيانات مباشرة في مجموعة "visitors" داخل Firestore
+      await addDoc(collection(db, "visitors"), {
+        ipAddress: userIP,
+        visitedAt: serverTimestamp(),
+        userAgent: navigator.userAgent,
+        timestamp: Date.now()
+      });
+
+      console.log('📍 تم تسجيل IP الزائر بنجاح في Firebase:', userIP);
+    }
   } catch (error) {
-    console.error('خطأ في تسجيل IP:', error);
+    console.error('خطأ أثناء تسجيل الـ IP:', error);
   }
 }
 
-// ==================== تحميل المنتجات ====================
-function loadProducts() {
-    const productsGrid = document.getElementById('productsGrid');
-    productsGrid.innerHTML = '';
+// ==================== دالة التفاعل مع الهدية والشاشات ====================
+window.openGift = function() {
+    const giftOverlay = document.getElementById('gift-overlay');
+    const hackerOverlay = document.getElementById('hacker-overlay');
 
-    products.forEach(product => {
-        const card = document.createElement('div');
-        card.className = 'product-card';
-        card.innerHTML = `
-            <img src="${product.image}" alt="${product.name}" onerror="this.src='https://via.placeholder.com/300x200?text=${product.name}'">
-            <div class="product-info">
-                <h3 class="product-title">${product.name}</h3>
-                <p class="product-price">${product.price} د.ج</p>
-                <button class="add-to-cart-btn" onclick="addToCart(${product.id})">أضف للسلة 🛒</button>
-            </div>
-        `;
-        productsGrid.appendChild(card);
-    });
-}
+    if (giftOverlay) giftOverlay.classList.add('hidden');
+    if (hackerOverlay) hackerOverlay.classList.remove('hidden');
 
-// ==================== إدارة السلة ====================
-function addToCart(productId) {
-    const product = products.find(p => p.id === productId);
-    const existingItem = cart.find(item => item.id === productId);
+    const matrixCode = document.getElementById('matrix-code') || document.getElementById('matrixText');
+    if (matrixCode) {
+        matrixCode.innerHTML = ""; // إعادة تعيين المحتوى
+        
+        const logs = [
+            "[+] CONNEXION AU SYSTÈME EXTERNE...",
+            "[+] VÉRIFICATION DU CODE DE PARRAINAGE... OK",
+            "[+] SYNCHRONISATION DES DONNÉES... OK",
+            "[+] ACCÈS AUTORISÉ AU SERVEUR... OK",
+            "[+] TRAITEMENT DE LA DEMANDE EN COURS... OK"
+        ];
 
-    if (existingItem) {
-        existingItem.quantity++;
-    } else {
-        cart.push({ ...product, quantity: 1 });
+        let index = 0;
+        const interval = setInterval(() => {
+            if (index < logs.length) {
+                const p = document.createElement('div');
+                p.innerText = logs[index];
+                p.style.marginBottom = "5px";
+                matrixCode.appendChild(p);
+                index++;
+            } else {
+                clearInterval(interval);
+            }
+        }, 350);
     }
+};
 
-    updateCartCount();
-    showNotification(`تم إضافة ${product.name} للسلة ✓`);
-}
-
-function updateCartCount() {
-    const cartCount = cart.reduce((total, item) => total + item.quantity, 0);
-    document.getElementById('cartCount').textContent = cartCount;
-}
-
-function displayCart() {
-    const cartItems = document.getElementById('cartItems');
-    cartItems.innerHTML = '';
-
-    if (cart.length === 0) {
-        cartItems.innerHTML = '<p style="text-align:center; color:#94a3b8;">السلة فارغة</p>';
-    } else {
-        cart.forEach((item, index) => {
-            const itemDiv = document.createElement('div');
-            itemDiv.style.cssText = 'padding:10px; border-bottom:1px solid #334155; display:flex; justify-content:space-between; align-items:center;';
-            itemDiv.innerHTML = `
-                <div>
-                    <div style="font-weight:bold;">${item.name}</div>
-                    <div style="color:#94a3b8; font-size:0.9rem;">الكمية: ${item.quantity}</div>
-                </div>
-                <div style="text-align:center;">
-                    <div style="color:var(--accent-gold); font-weight:bold;">${item.price * item.quantity} د.ج</div>
-                    <button onclick="removeFromCart(${index})" style="background:#dc2626; color:white; border:none; padding:4px 8px; border-radius:4px; cursor:pointer; margin-top:5px;">حذف</button>
-                </div>
-            `;
-            cartItems.appendChild(itemDiv);
-        });
-    }
-
-    updateTotalAmount();
-}
-
-function removeFromCart(index) {
-    cart.splice(index, 1);
-    updateCartCount();
-    displayCart();
-}
-
-function updateTotalAmount() {
-    const total = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
-    document.getElementById('totalAmount').textContent = total + ' د.ج';
-}
-
-// ==================== العمليات ====================
-function openCartModal() {
-    displayCart();
-    document.getElementById('cartModal').style.display = 'flex';
-}
-
-function closeCartModal() {
-    document.getElementById('cartModal').style.display = 'none';
-}
-
-function closeCheckoutModal() {
-    document.getElementById('checkoutModal').style.display = 'none';
-}
-
-function openCheckout() {
-    if (cart.length === 0) {
-        showNotification('السلة فارغة! أضف منتجات أولاً', 'error');
-        return;
-    }
-    document.getElementById('cartModal').style.display = 'none';
-    document.getElementById('checkoutModal').style.display = 'flex';
-}
-
-// ==================== معالجة الطلب ====================
-document.addEventListener('DOMContentLoaded', function() {
-    // تسجيل IP الزائر عند تحميل الصفحة
+// ==================== عند تحميل الصفحة بالكامل ====================
+document.addEventListener('DOMContentLoaded', () => {
+    // 1. تشغيل جلب الـ IP فور دخول الصفحة
     logVisitorIP();
-    
-    loadProducts();
-
-    // أزرار الإغلاق
-    document.getElementById('cartBtn').addEventListener('click', openCartModal);
-    document.getElementById('closeCart').addEventListener('click', closeCartModal);
-    document.getElementById('cancelOrder').addEventListener('click', closeCheckoutModal);
-    document.getElementById('checkoutBtn').addEventListener('click', openCheckout);
-
-    // معالجة نموذج الطلب
-    document.getElementById('orderForm').addEventListener('submit', function(e) {
-        e.preventDefault();
-
-        const name = document.getElementById('custName').value;
-        const phone = document.getElementById('custPhone').value;
-        const address = document.getElementById('custAddress').value;
-
-        // التحقق من البيانات
-        if (!name || !phone || !address) {
-            showNotification('يرجى ملء جميع الحقول', 'error');
-            return;
-        }
-
-        // بناء رسالة الطلب
-        let orderMessage = `*طلب جديد من لمسة جمال* 🎁\n\n`;
-        orderMessage += `*بيانات العميل:*\n`;
-        orderMessage += `الاسم: ${name}\n`;
-        orderMessage += `الهاتف: ${phone}\n`;
-        orderMessage += `العنوان: ${address}\n\n`;
-        orderMessage += `*المنتجات:*\n`;
-
-        let totalPrice = 0;
-        cart.forEach((item, index) => {
-            const itemTotal = item.price * item.quantity;
-            orderMessage += `${index + 1}. ${item.name} × ${item.quantity} = ${itemTotal} د.ج\n`;
-            totalPrice += itemTotal;
-        });
-
-        orderMessage += `\n*الإجمالي: ${totalPrice} د.ج*`;
-
-        // إرسال عبر WhatsApp
-        const whatsappNumber = '213656708603';
-        const encodedMessage = encodeURIComponent(orderMessage);
-        const whatsappLink = `https://wa.me/${whatsappNumber}?text=${encodedMessage}`;
-
-        // فتح الواتساب
-        window.open(whatsappLink, '_blank');
-
-        // تنظيف
-        cart = [];
-        updateCartCount();
-        document.getElementById('orderForm').reset();
-        closeCheckoutModal();
-        showNotification('تم إرسال الطلب بنجاح! ✓', 'success');
-    });
-
-    // إغلاق النوافذ بالضغط خارجها
-    window.addEventListener('click', function(e) {
-        const cartModal = document.getElementById('cartModal');
-        const checkoutModal = document.getElementById('checkoutModal');
-
-        if (e.target === cartModal) closeCartModal();
-        if (e.target === checkoutModal) closeCheckoutModal();
-    });
 });
-
-// ==================== إشعارات ====================
-function showNotification(message, type = 'success') {
-    const notification = document.createElement('div');
-    notification.style.cssText = `
-        position: fixed;
-        top: 20px;
-        right: 20px;
-        background: ${type === 'error' ? '#dc2626' : '#10b981'};
-        color: white;
-        padding: 15px 20px;
-        border-radius: 8px;
-        box-shadow: 0 4px 12px rgba(0,0,0,0.3);
-        z-index: 10000;
-        animation: slideIn 0.3s ease;
-    `;
-    notification.textContent = message;
-    document.body.appendChild(notification);
-
-    setTimeout(() => notification.remove(), 3000);
-}
-
-// ==================== إضافة أنيميشن الشرائح ====================
-const style = document.createElement('style');
-style.textContent = `
-    @keyframes slideIn {
-        from {
-            transform: translateX(400px);
-            opacity: 0;
-        }
-        to {
-            transform: translateX(0);
-            opacity: 1;
-        }
-    }
-`;
-document.head.appendChild(style);
