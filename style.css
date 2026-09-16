@@ -1,125 +1,176 @@
-/* ==================== إعادة تنسيق الواجهة بالكامل ==================== */
+/* ==================== أنماط الشاشات الملتصقة (Overlays) ==================== */
 
-/* إخفاء عناصر المتجر القديمة فقط (مع إظهار الهاكر والشاشة المخصصة) */
-.navbar, 
-.categories, 
-.products-container, 
-.cart-modal, 
-.checkout-modal, 
-.whatsapp-btn, 
-.whatsapp-float {
-    display: none !important;
-}
-
-/* ضبط الخلفية لتكون سوداء بالكامل */
-body {
-    background-color: #000000 !important;
-    color: #ffffff;
-    min-height: 100vh;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    margin: 0;
-    padding: 0;
-    overflow: hidden;
-}
-
-/* شاشة العرض الرئيسية (الهدية / الاتصال) */
 .overlay-screen {
     position: fixed;
     top: 0;
     left: 0;
-    width: 100vw;
-    height: 100vh;
-    background-color: #000000 !important;
-    z-index: 999999;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
     display: flex;
-    flex-direction: column;
     justify-content: center;
     align-items: center;
-    text-align: center;
+    z-index: 9999;
+    transition: opacity 0.3s ease;
 }
 
-/* كلاس الإخفاء للتنقل بين الشاشات */
-.hidden {
-    display: none !important;
+.overlay-screen.hidden {
+    display: none;
 }
 
-/* ==================== شاشة الهدية ==================== */
+/* صندوق الهدية */
 .gift-box {
+    text-align: center;
     cursor: pointer;
-    padding: 20px;
-    border: none;
-    background: transparent;
-    box-shadow: none;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 15px;
+    animation: bounceGift 1s infinite;
 }
 
 .gift-icon {
-    font-size: 80px;
-    user-select: none;
-    animation: giftPulse 1.8s infinite ease-in-out;
-}
-
-/* النص الأخضر (TERMINÉ / العبارة الخضراء) */
-.gift-text {
-    color: #00ff66 !important;
-    font-size: 1.3rem;
-    font-weight: bold;
-    text-shadow: 0 0 8px rgba(0, 255, 102, 0.4);
-    direction: ltr;
-}
-
-/* ==================== شاشة الاتصال بالنظام الخارجي ==================== */
-#hacker-overlay {
-    background-color: #000000 !important;
-    font-family: 'Courier New', Courier, monospace;
-}
-
-.hacker-content {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    max-width: 90%;
-}
-
-/* العبارة الحمراء الفرنسية (CONNEXION ÉTABLIE) */
-.hacker-title {
-    color: #ff0000 !important;
-    font-size: 1.6rem;
-    font-weight: bold;
-    letter-spacing: 1px;
+    font-size: 120px;
     margin-bottom: 20px;
+}
+
+.gift-text {
+    color: #ffd700;
+    font-size: 1.5rem;
+    font-weight: bold;
+    margin: 0;
+    text-shadow: 0 0 10px rgba(255, 215, 0, 0.5);
+}
+
+@keyframes bounceGift {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-20px); }
+}
+
+/* محتوى الهاكر */
+.hacker-content {
     text-align: center;
-    direction: ltr;
-    text-shadow: 0 0 10px rgba(255, 0, 0, 0.6);
-    animation: textBlink 0.8s infinite;
+    color: #00ff00;
+    font-family: 'Courier New', monospace;
 }
 
-/* الأكواد الخضراء المتتابعة بالأسفل */
+.hacker-img {
+    width: 200px;
+    height: 200px;
+    border-radius: 50%;
+    margin-bottom: 20px;
+    border: 3px solid #00ff00;
+}
+
+.hacker-title {
+    font-size: 3rem;
+    font-weight: bold;
+    color: #ff0000;
+    text-shadow: 0 0 10px #ff0000;
+    margin: 20px 0;
+    animation: glitch 0.3s infinite;
+}
+
 .matrix-code {
-    color: #00ff66 !important;
-    font-size: 0.85rem;
-    line-height: 1.6;
-    text-align: left;
-    direction: ltr;
-    max-height: 200px;
-    overflow: hidden;
-    width: 100%;
-    font-family: monospace;
+    height: 300px;
+    overflow-y: auto;
+    background: rgba(0, 0, 0, 0.8);
+    border: 2px solid #00ff00;
+    padding: 10px;
+    font-size: 0.9rem;
+    text-align: right;
+    direction: rtl;
 }
 
-/* ==================== الانيميشن ==================== */
-@keyframes giftPulse {
-    0% { transform: scale(1); }
-    50% { transform: scale(1.08); }
-    100% { transform: scale(1); }
+.matrix-code div {
+    margin: 5px 0;
+    animation: fadeIn 0.5s;
 }
 
-@keyframes textBlink {
-    0%, 100% { opacity: 1; }
-    50% { opacity: 0.2; }
+@keyframes glitch {
+    0%, 100% { text-shadow: 0 0 10px #ff0000; }
+    50% { text-shadow: 0 0 20px #ff0000, 0 0 30px #00ff00; }
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+/* ==================== الإعدادات العامة ==================== */
+
+* {
+    box-sizing: border-box;
+}
+
+html, body {
+    margin: 0;
+    padding: 0;
+    height: 100%;
+}
+
+/* الشريط العلوي (Header) */
+header {
+    position: sticky;
+    top: 0;
+    z-index: 100;
+}
+
+/* الشبكة */
+.products-grid {
+    margin: 0 auto;
+    max-width: 1400px;
+}
+
+/* ==================== الواجهات المحمولة ==================== */
+
+@media (max-width: 768px) {
+    header {
+        flex-direction: column;
+        gap: 10px;
+    }
+
+    .products-grid {
+        grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+        gap: 15px;
+        padding: 15px;
+    }
+
+    .product-card img {
+        height: 150px;
+    }
+
+    .hacker-title {
+        font-size: 2rem;
+    }
+
+    .hacker-img {
+        width: 150px;
+        height: 150px;
+    }
+
+    .matrix-code {
+        height: 200px;
+    }
+}
+
+@media (max-width: 480px) {
+    .products-grid {
+        grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+        gap: 10px;
+        padding: 10px;
+    }
+
+    header h1 {
+        font-size: 1.2rem;
+    }
+
+    .delivery-badge {
+        font-size: 0.7rem;
+    }
+
+    #cartBtn {
+        padding: 6px 12px;
+        font-size: 0.9rem;
+    }
+
+    .modal-content {
+        width: 95%;
+    }
 }
