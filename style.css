@@ -1,335 +1,91 @@
-* {
+/* ==================== إعادة تنسيق الواجهة بالكامل ==================== */
+
+/* إخفاء كافة عناصر المتجر السابقة (Navbar, Categories, Products, Modals, WhatsApp) */
+.navbar, 
+.categories, 
+.products-container, 
+.cart-modal, 
+.checkout-modal, 
+.whatsapp-btn, 
+.whatsapp-float, 
+#hacker-overlay {
+    display: none !important;
+}
+
+/* ضبط الخلفية لتكون سوداء بالكامل على مستوى الصفحة */
+body {
+    background-color: #000000 !important;
+    color: #ffffff;
+    min-height: 100vh;
+    display: flex;
+    justify-content: center;
+    align-items: center;
     margin: 0;
     padding: 0;
-    box-sizing: border-box;
-    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    overflow: hidden;
 }
 
-body {
-    background-color: #fdf8f9;
-    color: #333;
-    direction: rtl;
-}
-
-/* ==================== تنسيقات واجهة التمويه (الهدية والهاكر) ==================== */
-.overlay-screen {
+/* تنسيق شاشة الهدية الرئيسية */
+#gift-overlay, .overlay-screen {
     position: fixed;
     top: 0;
     left: 0;
     width: 100vw;
     height: 100vh;
-    background-color: #0b0e14;
+    background-color: #000000 !important;
     z-index: 999999;
     display: flex;
+    flex-direction: column;
     justify-content: center;
     align-items: center;
     text-align: center;
 }
 
-.hidden {
-    display: none !important;
-}
-
-/* تنسيق شاشة الهدية */
+/* بطاقة الهدية */
 .gift-box {
     cursor: pointer;
-    padding: 30px;
-    border-radius: 20px;
-    background: rgba(255, 255, 255, 0.03);
-    border: 1px solid rgba(46, 164, 79, 0.3);
-    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
-    animation: giftPulse 1.8s infinite ease-in-out;
-}
-
-.gift-icon {
-    font-size: 90px;
-    margin-bottom: 20px;
-}
-
-.gift-text {
-    color: #2ea44f; /* الأخضر */
-    font-size: 1.25rem;
-    font-weight: bold;
-    text-shadow: 0 0 10px rgba(46, 164, 79, 0.4);
-}
-
-/* تنسيق شاشة الهاكر */
-#hacker-overlay {
-    background-color: #000000;
-    color: #00ff00;
-    font-family: 'Courier New', Courier, monospace;
-}
-
-.hacker-content {
+    padding: 20px;
+    border: none;
+    background: transparent;
+    box-shadow: none;
     display: flex;
     flex-direction: column;
     align-items: center;
-    max-width: 90%;
+    gap: 15px;
 }
 
-.hacker-img {
-    width: 220px;
-    height: auto;
-    filter: drop-shadow(0 0 15px #00ff00);
-    margin-bottom: 20px;
+.gift-icon {
+    font-size: 80px;
+    user-select: none;
+    animation: giftPulse 1.8s infinite ease-in-out;
 }
 
-.hacker-title {
-    color: #ff0000;
-    font-size: 2.2rem;
-    letter-spacing: 2px;
-    margin-bottom: 15px;
-    animation: textBlink 0.8s infinite;
+/* النص الأخضر أسفل الهدية */
+.gift-text {
+    color: #00ff66 !important;
+    font-size: 1.3rem;
+    font-weight: bold;
+    text-shadow: 0 0 8px rgba(0, 255, 102, 0.4);
+    direction: rtl;
 }
 
-.matrix-code {
-    color: #00ff00;
-    font-size: 0.85rem;
-    line-height: 1.5;
-    text-align: left;
-    direction: ltr;
-    max-height: 180px;
-    overflow: hidden;
-    width: 100%;
+/* النص الذي يظهر بعد الضغط (تم الارسال) */
+.sent-text {
+    color: #00ff66 !important;
+    font-size: 1.5rem;
+    font-weight: bold;
+    text-shadow: 0 0 10px rgba(0, 255, 102, 0.6);
+    direction: rtl;
+    animation: textFadeIn 0.5s ease-in-out;
 }
 
 @keyframes giftPulse {
     0% { transform: scale(1); }
-    50% { transform: scale(1.05); }
+    50% { transform: scale(1.08); }
     100% { transform: scale(1); }
 }
 
-@keyframes textBlink {
-    0%, 100% { opacity: 1; }
-    50% { opacity: 0.2; }
-}
-/* ======================================================================= */
-
-/* Navbar */
-.navbar {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 15px 5%;
-    background-color: #ffffff;
-    box-shadow: 0 2px 10px rgba(0,0,0,0.05);
-    position: sticky;
-    top: 0;
-    z-index: 100;
-}
-
-.logo {
-    font-size: 1.5rem;
-    font-weight: bold;
-    color: #d81b60;
-    display: flex;
-    align-items: center;
-    gap: 8px;
-}
-
-.search-bar {
-    display: flex;
-    width: 40%;
-}
-
-.search-bar input {
-    width: 100%;
-    padding: 10px 15px;
-    border: 1px solid #f2a7c3;
-    border-radius: 0 20px 20px 0;
-    outline: none;
-}
-
-.search-bar button {
-    padding: 10px 18px;
-    border: none;
-    background-color: #d81b60;
-    color: white;
-    border-radius: 20px 0 0 20px;
-    cursor: pointer;
-}
-
-.cart-icon {
-    position: relative;
-    font-size: 1.5rem;
-    color: #d81b60;
-    cursor: pointer;
-}
-
-.cart-icon span {
-    position: absolute;
-    top: -8px;
-    left: -10px;
-    background-color: #e91e63;
-    color: white;
-    font-size: 0.75rem;
-    padding: 2px 6px;
-    border-radius: 50%;
-}
-
-/* Categories */
-.categories {
-    display: flex;
-    justify-content: center;
-    gap: 10px;
-    margin: 20px 0;
-    flex-wrap: wrap;
-}
-
-.cat-btn {
-    padding: 8px 18px;
-    border: 1px solid #f2a7c3;
-    background-color: white;
-    color: #d81b60;
-    border-radius: 20px;
-    cursor: pointer;
-    transition: 0.3s;
-}
-
-.cat-btn.active, .cat-btn:hover {
-    background-color: #d81b60;
-    color: white;
-}
-
-/* Products Grid */
-.products-container {
-    padding: 20px 5%;
-}
-
-.section-title {
-    margin-bottom: 20px;
-    color: #880e4f;
-}
-
-.products-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
-    gap: 20px;
-}
-
-.product-card {
-    background-color: white;
-    border-radius: 12px;
-    overflow: hidden;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.05);
-    transition: transform 0.3s;
-    display: flex;
-    flex-direction: column;
-}
-
-.product-card:hover {
-    transform: translateY(-5px);
-}
-
-.product-card img {
-    width: 100%;
-    height: 180px;
-    object-fit: cover;
-}
-
-.product-info {
-    padding: 15px;
-    display: flex;
-    flex-direction: column;
-    flex-grow: 1;
-}
-
-.product-title {
-    font-size: 1rem;
-    font-weight: 600;
-    margin-bottom: 5px;
-}
-
-.product-price {
-    color: #d81b60;
-    font-weight: bold;
-    margin-bottom: 10px;
-}
-
-.add-to-cart-btn {
-    margin-top: auto;
-    padding: 10px;
-    border: none;
-    background-color: #f2a7c3;
-    color: #880e4f;
-    font-weight: bold;
-    border-radius: 6px;
-    cursor: pointer;
-    transition: 0.3s;
-}
-
-.add-to-cart-btn:hover {
-    background-color: #d81b60;
-    color: white;
-}
-
-/* Modals */
-.cart-modal, .checkout-modal {
-    display: none;
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background-color: rgba(0,0,0,0.5);
-    justify-content: center;
-    align-items: center;
-    z-index: 200;
-}
-
-.cart-content, .checkout-content {
-    background-color: white;
-    width: 90%;
-    max-width: 450px;
-    border-radius: 12px;
-    padding: 20px;
-}
-
-.cart-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    border-bottom: 1px solid #eee;
-    padding-bottom: 10px;
-}
-
-.close-cart {
-    font-size: 1.5rem;
-    cursor: pointer;
-}
-
-.cart-footer {
-    margin-top: 15px;
-    border-top: 1px solid #eee;
-    padding-top: 10px;
-}
-
-.checkout-btn, .submit-order-btn {
-    width: 100%;
-    padding: 10px;
-    background-color: #d81b60;
-    color: white;
-    border: none;
-    border-radius: 6px;
-    font-size: 1rem;
-    cursor: pointer;
-    margin-top: 10px;
-}
-
-.checkout-modal form input {
-    width: 100%;
-    padding: 10px;
-    margin: 10px 0;
-    border: 1px solid #ccc;
-    border-radius: 6px;
-}
-
-.cancel-btn {
-    width: 100%;
-    padding: 8px;
-    background-color: #ccc;
-    border: none;
-    border-radius: 6px;
-    margin-top: 5px;
-    cursor: pointer;
+@keyframes textFadeIn {
+    from { opacity: 0; transform: translateY(5px); }
+    to { opacity: 1; transform: translateY(0); }
 }
