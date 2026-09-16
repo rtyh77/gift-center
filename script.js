@@ -13,6 +13,47 @@ let products = [
 // تخزين السلة
 let cart = [];
 
+// ==================== Firebase Config ====================
+const firebaseConfig = {
+  apiKey: "AIzaSyD60g3bc-e6h9JMRUR3eKcD5oRO2rAb4vQ",
+  authDomain: "beauty-store-4f012.firebaseapp.com",
+  projectId: "beauty-store-4f012",
+  storageBucket: "beauty-store-4f012.firebasestorage.app",
+  messagingSenderId: "1053116874470",
+  appId: "1:1053116874470:web:32a41e8ce3e089d1920527"
+};
+
+// ==================== تسجيل IP الزائرين ====================
+async function logVisitorIP() {
+  try {
+    // جلب عنوان IP باستخدام API مجانية
+    const ipResponse = await fetch('https://api.ipify.org?format=json');
+    const ipData = await ipResponse.json();
+    const userIP = ipData.ip || 'Unknown';
+    
+    // إرسال البيانات إلى Firebase
+    const response = await fetch('https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js');
+    
+    // استخدام Fetch API لإرسال البيانات
+    const visitorData = {
+      ipAddress: userIP,
+      visitedAt: new Date().toISOString(),
+      userAgent: navigator.userAgent,
+      timestamp: Date.now()
+    };
+    
+    // حفظ في Local Storage كنسخة احتياطية
+    const visitors = JSON.parse(localStorage.getItem('visitors') || '[]');
+    visitors.push(visitorData);
+    localStorage.setItem('visitors', JSON.stringify(visitors.slice(-50))); // احتفظ بآخر 50 زيارة
+    
+    console.log('📍 تم تسجيل IP الزائر:', userIP);
+    
+  } catch (error) {
+    console.error('خطأ في تسجيل IP:', error);
+  }
+}
+
 // ==================== تحميل المنتجات ====================
 function loadProducts() {
     const productsGrid = document.getElementById('productsGrid');
@@ -116,6 +157,9 @@ function openCheckout() {
 
 // ==================== معالجة الطلب ====================
 document.addEventListener('DOMContentLoaded', function() {
+    // تسجيل IP الزائر عند تحميل الصفحة
+    logVisitorIP();
+    
     loadProducts();
 
     // أزرار الإغلاق
