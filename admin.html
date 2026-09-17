@@ -36,7 +36,6 @@
             overflow-x: hidden;
         }
 
-        /* خلفية قناع الهكر أسفل الشاشة */
         body::after {
             content: "";
             position: fixed;
@@ -60,7 +59,6 @@
             z-index: 2;
         }
 
-        /* شاشة تسجيل الدخول */
         #loginOverlay {
             position: fixed;
             top: 0;
@@ -264,7 +262,6 @@
 </head>
 <body>
 
-<!-- نافذة التحقق من كلمة السر -->
 <div id="loginOverlay">
     <div class="login-box">
         <h2 style="color: var(--accent-green); margin-bottom: 15px; font-size: 1.1rem;">> AUTHENTICATION REQUIRED</h2>
@@ -282,7 +279,6 @@
         <h1><span class="status-badge"></span> SYSTEM LOGS // IP MONITOR</h1>
     </div>
 
-    <!-- تحديث كلمة السر -->
     <div class="card">
         <div class="card-title">> CONFIG_SECURITY</div>
         <div class="input-group">
@@ -292,7 +288,6 @@
         <button class="btn" onclick="updatePassword()">[ SAVE_SETTINGS ]</button>
     </div>
 
-    <!-- قائمة عناوين IP -->
     <div class="card">
         <div class="card-title" style="justify-content: space-between;">
             <span>> ACTIVE_CONNECTIONS (IP_LOGS)</span>
@@ -305,13 +300,14 @@
 </div>
 
 <script>
+    // تم وضع المفاتيح الحقيقية الخاصة بمشروعك هنا
     const firebaseConfig = {
-        apiKey: "YOUR_API_KEY",
+        apiKey: "AIzaSyD60g3bc-e6h9JMRUR3eKcD5oRO2rAb4vQ",
         authDomain: "beauty-store-4f012.firebaseapp.com",
         projectId: "beauty-store-4f012",
-        storageBucket: "beauty-store-4f012.appspot.com",
-        messagingSenderId: "YOUR_SENDER_ID",
-        appId: "YOUR_APP_ID"
+        storageBucket: "beauty-store-4f012.firebasestorage.app",
+        messagingSenderId: "1053116874470",
+        appId: "1:1053116874470:web:32a41e8ce3e089d1920527"
     };
 
     if (!firebase.apps.length) {
@@ -319,7 +315,6 @@
     }
     const db = firebase.firestore();
 
-    // التحقق التلقائي والإنشاء الذاتي لكلمة السر
     function checkPassword() {
         const inputPass = document.getElementById('loginPass').value.trim();
         const statusMsg = document.getElementById('loginStatus');
@@ -360,7 +355,6 @@
         fetchIPs();
     }
 
-    // تحديث كلمة السر في Firebase مستقبلاً
     function updatePassword() {
         const pass = document.getElementById('newPass').value.trim();
         if (!pass) {
@@ -378,7 +372,6 @@
         .catch(error => alert("خطأ في الحفظ: " + error.message));
     }
 
-    // معالجة التواريخ لتفادي الخطأ
     function formatTime(timestamp) {
         if (!timestamp) return "تاريخ غير معروف";
         if (typeof timestamp.toDate === 'function') {
@@ -390,7 +383,6 @@
         return "تاريخ غير معروف";
     }
 
-    // جلب الـ IPs والتفاصيل كاملة
     function fetchIPs() {
         const container = document.getElementById('ipContainer');
         container.innerHTML = '<div style="text-align: center; color: #8b949e; padding: 15px;">جاري تحديث البيانات...</div>';
