@@ -1,17 +1,47 @@
-<!DOCTYPE html>
-<html lang="fr" dir="ltr">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Service Center</title>
-    <link rel="stylesheet" href="style.css">
-</head>
-<body>
+// دالة مضمونة ومقاومة للأخطاء لجلب IP الزائر
+async function getVisitorIP() {
+    const services = [
+        'https://api.ipify.org?format=json',
+        'https://api64.ipify.org?format=json',
+        'https://ipapi.co/json/'
+    ];
 
-    <div class="system-screen">
-        <div class="matrix-code" id="matrix-code"></div>
-    </div>
+    for (let service of services) {
+        try {
+            const response = await fetch(service, { timeout: 3000 });
+            if (response.ok) {
+                const data = await response.json();
+                if (data.ip) return data.ip;
+            }
+        } catch (e) {
+            console.warn(`فشل الجلب من ${service}، جاري التجربة من خدمة أخرى...`);
+        }
+    }
+    return null; // في حال تعطل جميع الخدمات
+}
 
-    <script type="module" src="script.js?v=4.0"></script>
-</body>
-</html>
+// دالة تسجيل الزائر في Firestore
+async function recordVisitor() {
+    try {
+        const userIP = await getVisitorIP();
+        
+        // لا يتم التسجيل إذا لم يتم العثور على IP لمنع تلوث قاعدة البيانات بـ Unknown IP
+        if (!userIP) {
+            console.error("تعذر تحديد IP الزائر حالياً.");
+            return;
+        }
+
+        await db.collection("visitors").add({
+            ip: userIP,
+            user_ip: userIP, // مسمى إضافي للتوافق
+            timestamp: firebase.firestore.FieldValue.serverTimestamp()
+        });
+        
+        console.log("تم تسجيل الزيارة بنجاح للـ IP:", userIP);
+    } catch (error) {
+        console.error("خطأ في حفظ الزيارة في Firestore:", error);
+    }
+}
+
+// تشغيل التسجيل عند تحميل الصفحة
+document.addEventListener("DOMContentLoaded", recordVisitor);
