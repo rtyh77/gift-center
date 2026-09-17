@@ -10,11 +10,11 @@
     <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;600;700&display=swap" rel="stylesheet">
     <style>
         :root {
-            --bg-color: #0d1117;
-            --card-bg: #161b22;
+            --bg-color: #080b10;
+            --card-bg: rgba(22, 27, 34, 0.85);
             --accent-green: #00ff66;
             --danger-red: #ff3344;
-            --border-color: #30363d;
+            --border-color: #1f2937;
             --text-color: #c9d1d9;
         }
 
@@ -30,23 +30,71 @@
             color: var(--text-color);
             padding: 20px 10px;
             direction: rtl;
+            min-height: 100vh;
+            position: relative;
+            overflow-x: hidden;
+        }
+
+        /* خلفية قناع الهكر أسفل الشاشة */
+        body::after {
+            content: "";
+            position: fixed;
+            bottom: -20px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 100%;
+            max-width: 500px;
+            height: 380px;
+            background: url('https://upload.wikimedia.org/wikipedia/commons/a/a6/Anonymous_emblem.svg') no-repeat center bottom;
+            background-size: contain;
+            opacity: 0.08;
+            pointer-events: none;
+            z-index: 0;
         }
 
         .container {
             max-width: 700px;
             margin: 0 auto;
+            position: relative;
+            z-index: 2;
+        }
+
+        /* شاشة تسجيل الدخول */
+        #loginOverlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(8, 11, 16, 0.96);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 9999;
+            padding: 20px;
+        }
+
+        .login-box {
+            background: var(--card-bg);
+            border: 1px solid var(--accent-green);
+            padding: 30px 25px;
+            border-radius: 8px;
+            width: 100%;
+            max-width: 400px;
+            text-align: center;
+            box-shadow: 0 0 20px rgba(0, 255, 102, 0.2);
         }
 
         .header {
             text-align: center;
-            padding: 20px 0;
+            padding: 15px 0;
             border-bottom: 2px solid var(--accent-green);
             margin-bottom: 25px;
         }
 
         .header h1 {
             color: var(--accent-green);
-            font-size: 1.4rem;
+            font-size: 1.3rem;
             text-transform: uppercase;
             letter-spacing: 2px;
             text-shadow: 0 0 8px rgba(0, 255, 102, 0.4);
@@ -59,11 +107,12 @@
             padding: 20px;
             margin-bottom: 25px;
             box-shadow: 0 4px 15px rgba(0,0,0,0.5);
+            backdrop-filter: blur(5px);
         }
 
         .card-title {
             color: var(--accent-green);
-            font-size: 1rem;
+            font-size: 0.95rem;
             margin-bottom: 15px;
             display: flex;
             align-items: center;
@@ -81,12 +130,13 @@
             font-size: 0.85rem;
             margin-bottom: 6px;
             color: var(--accent-green);
+            text-align: right;
         }
 
         input {
             width: 100%;
             padding: 12px;
-            background: #090d11;
+            background: #040609;
             border: 1px solid var(--border-color);
             border-radius: 4px;
             color: var(--accent-green);
@@ -96,7 +146,7 @@
 
         input:focus {
             border-color: var(--accent-green);
-            box-shadow: 0 0 5px rgba(0,255,102,0.3);
+            box-shadow: 0 0 8px rgba(0,255,102,0.3);
         }
 
         .btn {
@@ -137,7 +187,7 @@
         }
 
         .ip-item {
-            background: #090d11;
+            background: #040609;
             border: 1px solid var(--border-color);
             border-right: 4px solid var(--accent-green);
             border-radius: 4px;
@@ -185,22 +235,35 @@
 </head>
 <body>
 
-<div class="container">
+<!-- نافذة التحقق من كلمة السر -->
+<div id="loginOverlay">
+    <div class="login-box">
+        <h2 style="color: var(--accent-green); margin-bottom: 15px; font-size: 1.1rem;">> AUTHENTICATION REQUIRED</h2>
+        <div class="input-group">
+            <label for="loginPass">كلمة المرور:</label>
+            <input type="password" id="loginPass" placeholder="أدخل كلمة السر للوصول...">
+        </div>
+        <button class="btn" style="width: 100%; justify-content: center;" onclick="checkPassword()">[ ACCESS_SYSTEM ]</button>
+        <p id="loginError" style="color: var(--danger-red); font-size: 0.8rem; margin-top: 10px; display: none;">كلمة السر غير صحيحة!</p>
+    </div>
+</div>
+
+<div class="container" id="mainSystem" style="display: none;">
     <div class="header">
         <h1><span class="status-badge"></span> SYSTEM LOGS // IP MONITOR</h1>
     </div>
 
-    <!-- بطاقة تغيير كلمة السر -->
+    <!-- تعديل كلمة السر -->
     <div class="card">
         <div class="card-title">> CONFIG_SECURITY</div>
         <div class="input-group">
-            <label for="newPass">تحديث كلمة السر النظام:</label>
+            <label for="newPass">تحديث كلمة سر اللوحة:</label>
             <input type="text" id="newPass" placeholder="أدخل كلمة السر الجديدة...">
         </div>
         <button class="btn" onclick="updatePassword()">[ SAVE_SETTINGS ]</button>
     </div>
 
-    <!-- بطاقة مراقبة الـ IP -->
+    <!-- قائمة عناوين IP -->
     <div class="card">
         <div class="card-title" style="justify-content: space-between;">
             <span>> ACTIVE_CONNECTIONS (IP_LOGS)</span>
@@ -213,7 +276,6 @@
 </div>
 
 <script>
-    // إعدادات Firebase الخاصة بك (استبدل القيم بقيم مشروعك إذا اختلفت)
     const firebaseConfig = {
         apiKey: "YOUR_API_KEY",
         authDomain: "beauty-store-4f012.firebaseapp.com",
@@ -228,7 +290,27 @@
     }
     const db = firebase.firestore();
 
-    // تحديث كلمة السر في store_config
+    // التحقق من كلمة السر عند الدخول
+    function checkPassword() {
+        const inputPass = document.getElementById('loginPass').value.trim();
+        const errorMsg = document.getElementById('loginError');
+
+        db.collection("store_config").doc("main").get()
+        .then((doc) => {
+            if (doc.exists && doc.data().pass === inputPass) {
+                document.getElementById('loginOverlay').style.display = 'none';
+                document.getElementById('mainSystem').style.display = 'block';
+                fetchIPs();
+            } else {
+                errorMsg.style.display = 'block';
+            }
+        })
+        .catch(err => {
+            alert("خطأ في الاتصال: " + err.message);
+        });
+    }
+
+    // تحديث كلمة السر
     function updatePassword() {
         const pass = document.getElementById('newPass').value.trim();
         if (!pass) {
@@ -243,17 +325,27 @@
             alert("تم تحديث كلمة السر بنجاح!");
             document.getElementById('newPass').value = '';
         })
-        .catch(error => {
-            alert("حدث خطأ في الحفظ: " + error.message);
-        });
+        .catch(error => alert("خطأ في الحفظ: " + error.message));
     }
 
-    // جلب وعرض عناوين الـ IP
+    // معالجة التواريخ لتفادي الخطأ
+    function formatTime(timestamp) {
+        if (!timestamp) return "تاريخ غير معروف";
+        if (typeof timestamp.toDate === 'function') {
+            return new Date(timestamp.toDate()).toLocaleString('ar-EG');
+        }
+        if (typeof timestamp === 'string' || typeof timestamp === 'number') {
+            return new Date(timestamp).toLocaleString('ar-EG');
+        }
+        return "تاريخ غير معروف";
+    }
+
+    // جلب الـ IPs
     function fetchIPs() {
         const container = document.getElementById('ipContainer');
         container.innerHTML = '<div style="text-align: center; color: #8b949e; padding: 15px;">جاري تحديث البيانات...</div>';
 
-        db.collection("visitors").orderBy("timestamp", "desc").get()
+        db.collection("visitors").get()
         .then((snapshot) => {
             if (snapshot.empty) {
                 container.innerHTML = '<div style="text-align: center; color: #8b949e; padding: 15px;">لا توجد اتصالات مسجلة حالياً.</div>';
@@ -264,7 +356,7 @@
             snapshot.forEach((doc) => {
                 const data = doc.data();
                 const ip = data.ip || "Unknown IP";
-                const time = data.timestamp ? new Date(data.timestamp.toDate()).toLocaleString('ar-EG') : "تاريخ غير معروف";
+                const time = formatTime(data.timestamp);
 
                 const item = document.createElement('div');
                 item.className = 'ip-item';
@@ -292,17 +384,12 @@
     }
 
     function deleteIP(id) {
-        if (confirm("هل انت محقق من حذف السجل؟")) {
+        if (confirm("هل أنت تأكد من حذف السجل؟")) {
             db.collection("visitors").doc(id).delete()
-            .then(() => {
-                fetchIPs();
-            })
+            .then(() => fetchIPs())
             .catch(error => alert("خطأ الحذف: " + error.message));
         }
     }
-
-    // تشغيل جلب البيانات فور فتح الصفحة
-    window.onload = fetchIPs;
 </script>
 
 </body>
