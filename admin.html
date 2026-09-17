@@ -3,473 +3,307 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>لوحة التحكم</title>
-
-    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700&display=swap" rel="stylesheet">
+    <title>CYBER_CORE // IP MONITOR</title>
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;600;700&display=swap" rel="stylesheet">
     <style>
         :root {
-            --primary: #d81b60;
-            --bg-color: #0f172a;
-            --card-bg: #1e293b;
-            --text-color: #f8fafc;
-            --border-color: #334155;
+            --bg-color: #0d1117;
+            --card-bg: #161b22;
+            --accent-green: #00ff66;
+            --danger-red: #ff3344;
+            --border-color: #30363d;
+            --text-color: #c9d1d9;
         }
 
-        * { box-sizing: border-box; font-family: 'Cairo', sans-serif; margin: 0; padding: 0; }
-        body { background-color: var(--bg-color); color: var(--text-color); padding-bottom: 30px; }
+        * {
+            box-sizing: border-box;
+            font-family: 'Fira Code', monospace, sans-serif;
+            margin: 0;
+            padding: 0;
+        }
 
-        #loginOverlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(15,23,42,0.95); display: flex; justify-content: center; align-items: center; z-index: 1000; }
-        .login-box { background: var(--card-bg); border: 1px solid var(--border-color); padding: 30px; border-radius: 16px; width: 90%; max-width: 400px; text-align: center; }
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            padding: 20px 10px;
+            direction: rtl;
+        }
 
-        header { background: var(--card-bg); padding: 15px; border-bottom: 1px solid var(--border-color); text-align: center; }
-        .container { max-width: 800px; margin: 20px auto; padding: 0 15px; display: none; }
-        .card { background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 12px; padding: 20px; margin-bottom: 25px; }
+        .container {
+            max-width: 700px;
+            margin: 0 auto;
+        }
 
-        .form-group { margin-bottom: 15px; text-align: right; }
-        label { display: block; margin-bottom: 5px; font-weight: 600; color: #e2e8f0; }
-        input, select, textarea { width: 100%; padding: 12px; background: #0f172a; border: 1px solid var(--border-color); border-radius: 8px; color: white; outline: none; font-size: 0.95rem; }
-        textarea { resize: vertical; min-height: 90px; }
+        .header {
+            text-align: center;
+            padding: 20px 0;
+            border-bottom: 2px solid var(--accent-green);
+            margin-bottom: 25px;
+        }
 
-        .btn { width: 100%; padding: 12px; background: #0284c7; color: white; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; font-size: 1rem; }
-        .btn-submit { background: #0284c7; }
-        .btn-save { background: #16a34a; }
-        .btn-copy { background: #0284c7; color: white; border: none; padding: 3px 8px; border-radius: 4px; font-size: 0.75rem; cursor: pointer; margin-right: 5px; }
-        .btn-edit { background: #eab308; padding: 6px 12px; font-size: 0.85rem; border-radius: 6px; border: none; color: black; font-weight: bold; cursor: pointer; }
-        .btn-delete { background: #ef4444; padding: 6px 12px; font-size: 0.85rem; border-radius: 6px; border: none; color: white; font-weight: bold; cursor: pointer; }
+        .header h1 {
+            color: var(--accent-green);
+            font-size: 1.4rem;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            text-shadow: 0 0 8px rgba(0, 255, 102, 0.4);
+        }
 
-        #loadingIndicator { display: none; text-align: center; color: #38bdf8; font-weight: bold; margin-top: 10px; }
+        .card {
+            background: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            padding: 20px;
+            margin-bottom: 25px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.5);
+        }
 
-        .order-card, .visitor-card { background: #0f172a; border: 1px solid var(--border-color); border-radius: 8px; padding: 15px; margin-bottom: 12px; display: flex; justify-content: space-between; align-items: center; }
-        .products-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; margin-top: 15px; }
-        .product-item { background: #0f172a; border: 1px solid var(--border-color); border-radius: 8px; padding: 10px; text-align: center; }
-        .product-item img { width: 100%; height: 100px; object-fit: cover; border-radius: 6px; }
-        
-        .modal { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); display: none; justify-content: center; align-items: center; z-index: 2000; }
-        .modal-content { background: var(--card-bg); padding: 25px; border-radius: 12px; width: 90%; max-width: 500px; max-height: 90vh; overflow-y: auto; }
-        
-        .ip-badge { background: #334155; color: #38bdf8; padding: 2px 6px; border-radius: 4px; font-family: monospace; font-size: 0.85rem; }
-        .time-badge { color: #94a3b8; font-size: 0.8rem; margin-top: 4px; display: block; }
-        .card-header-flex { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; }
+        .card-title {
+            color: var(--accent-green);
+            font-size: 1rem;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            border-bottom: 1px dashed var(--border-color);
+            padding-bottom: 8px;
+        }
+
+        .input-group {
+            margin-bottom: 15px;
+        }
+
+        label {
+            display: block;
+            font-size: 0.85rem;
+            margin-bottom: 6px;
+            color: var(--accent-green);
+        }
+
+        input {
+            width: 100%;
+            padding: 12px;
+            background: #090d11;
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+            color: var(--accent-green);
+            font-size: 0.95rem;
+            outline: none;
+        }
+
+        input:focus {
+            border-color: var(--accent-green);
+            box-shadow: 0 0 5px rgba(0,255,102,0.3);
+        }
+
+        .btn {
+            background: transparent;
+            color: var(--accent-green);
+            border: 1px solid var(--accent-green);
+            padding: 10px 18px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.2s;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .btn:hover {
+            background: var(--accent-green);
+            color: #000;
+            box-shadow: 0 0 10px rgba(0,255,102,0.5);
+        }
+
+        .btn-danger {
+            color: var(--danger-red);
+            border-color: var(--danger-red);
+        }
+
+        .btn-danger:hover {
+            background: var(--danger-red);
+            color: #fff;
+            box-shadow: 0 0 10px rgba(255,51,68,0.5);
+        }
+
+        .ip-list {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .ip-item {
+            background: #090d11;
+            border: 1px solid var(--border-color);
+            border-right: 4px solid var(--accent-green);
+            border-radius: 4px;
+            padding: 12px 15px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+
+        .ip-info {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .ip-address {
+            color: #fff;
+            font-size: 1.05rem;
+            font-weight: 700;
+            letter-spacing: 1px;
+        }
+
+        .ip-time {
+            font-size: 0.75rem;
+            color: #8b949e;
+        }
+
+        .actions {
+            display: flex;
+            gap: 8px;
+        }
+
+        .status-badge {
+            display: inline-block;
+            width: 8px;
+            height: 8px;
+            background: var(--accent-green);
+            border-radius: 50%;
+            box-shadow: 0 0 8px var(--accent-green);
+            margin-left: 6px;
+        }
     </style>
 </head>
 <body>
 
-    <div id="loginOverlay">
-        <div class="login-box">
-            <h2 style="color:var(--primary); margin-bottom:15px;">👑 عطور الفخامة</h2>
-            <p style="margin-bottom:15px; color:#94a3b8; font-size:0.9rem;">أدخل كلمة سر لوحة التحكم للوصول</p>
-            <div class="form-group"><input type="password" id="passInput" placeholder="كلمة السر"></div>
-            <button class="btn btn-submit" onclick="checkPassword()">دخول اللوحة 🔐</button>
-        </div>
+<div class="container">
+    <div class="header">
+        <h1><span class="status-badge"></span> SYSTEM LOGS // IP MONITOR</h1>
     </div>
 
-    <header><h2>⚙️ إعدادات المتجر واللوحة</h2></header>
-
-    <div class="container" id="mainContent">
-
-        <div class="card">
-            <h3>⚙️ إعدادات المتجر واللوحة</h3>
-            <br>
-            <div class="form-group">
-                <label>رقم الواتساب (لاستقبال الطلبات):</label>
-                <input type="text" id="setWa" placeholder="مثال: 213600000000">
-            </div>
-            <div class="form-group">
-                <label>كلمة سر اللوحة الجديدة:</label>
-                <input type="password" id="setPass" placeholder="أدخل كلمة السر الجديدة هنا">
-            </div>
-            <button class="btn btn-save" onclick="saveSettings()">💾 حفظ الإعدادات</button>
+    <!-- بطاقة تغيير كلمة السر -->
+    <div class="card">
+        <div class="card-title">> CONFIG_SECURITY</div>
+        <div class="input-group">
+            <label for="newPass">تحديث كلمة السر النظام:</label>
+            <input type="text" id="newPass" placeholder="أدخل كلمة السر الجديدة...">
         </div>
-
-        <div class="card">
-            <h3>➕ إضافة عطر جديد للمتجر</h3>
-            <br>
-            <form id="productForm">
-                <div class="form-group">
-                    <label>اسم العطر:</label>
-                    <input type="text" id="pName" placeholder="اسم العطر" required>
-                </div>
-                
-                <div class="form-group">
-                    <label>السعر (د.ج):</label>
-                    <input type="number" id="pPrice" placeholder="مثال: 4500" required>
-                </div>
-
-                <div class="form-group">
-                    <label>التصنيف:</label>
-                    <select id="pCat" required>
-                        <option value="عطور صيفية">عطور صيفية</option>
-                        <option value="عطور شتوية">عطور شتوية</option>
-                        <option value="عطور للمناسبات">عطور للمناسبات</option>
-                        <option value="عطور رجالية">عطور رجالية</option>
-                        <option value="عطور نسائية">عطور نسائية</option>
-                    </select>
-                </div>
-
-                <div class="form-group">
-                    <label>وصف العطر (اختياري):</label>
-                    <textarea id="pDesc" placeholder="اكتب وصفاً مميزاً لمكونات العطر أو رائحته..."></textarea>
-                </div>
-
-                <div class="form-group">
-                    <label>الكمية المتاحة (عدد العلب المتوفرة):</label>
-                    <input type="number" id="pQty" value="10" min="1" required placeholder="مثال: 10">
-                </div>
-
-                <div class="form-group">
-                    <label>صور العطر (يمكن اختيار صورة أو عدة صور معاَ):</label>
-                    <input type="file" id="pImgFiles" accept="image/*" multiple required>
-                </div>
-
-                <button type="submit" class="btn btn-submit" id="submitBtn">نشر المنتج في المتجر</button>
-                <div id="loadingIndicator">⏳ جاري معالجة الصور ورفع المنتج...</div>
-            </form>
-        </div>
-
-        <!-- قسم الطلبات الواردة -->
-        <div class="card">
-            <div class="card-header-flex">
-                <h3>📦 الطلبات الواردة</h3>
-                <button class="btn-copy" onclick="loadOrders()" style="padding: 5px 10px;">🔄 تحديث</button>
-            </div>
-            <div id="ordersContainer">جاري التحميل...</div>
-        </div>
-
-        <!-- قسم الزيارات الفورية الجديد -->
-        <div class="card">
-            <div class="card-header-flex">
-                <h3>👀 سجل زوار المتجر الفوري (Visitors)</h3>
-                <button class="btn-copy" onclick="loadVisitors()" style="padding: 5px 10px;">🔄 تحديث السجل</button>
-            </div>
-            <p style="color:#94a3b8; font-size:0.85rem; margin-bottom:12px;">يعرض العناوين العامّة (Public IP) للزوار الذين يفتحون المتجر فوراً قبل إجراء أي طلب:</p>
-            <div id="visitorsContainer">جاري التحميل...</div>
-        </div>
-
-        <div class="card">
-            <h3>📦 المنتجات الحالية</h3>
-            <div class="products-grid" id="productsContainer">جاري التحميل...</div>
-        </div>
-
+        <button class="btn" onclick="updatePassword()">[ SAVE_SETTINGS ]</button>
     </div>
 
-    <div class="modal" id="editModal">
-        <div class="modal-content">
-            <h3 style="margin-bottom:15px; color:var(--primary);">تعديل العطر</h3>
-            <input type="hidden" id="editId">
-            <div class="form-group"><label>اسم العطر:</label><input type="text" id="editName"></div>
-            <div class="form-group">
-                <label>التصنيف:</label>
-                <select id="editCat">
-                    <option value="عطور صيفية">عطور صيفية</option>
-                    <option value="عطور شتوية">عطور شتوية</option>
-                    <option value="عطور للمناسبات">عطور للمناسبات</option>
-                    <option value="عطور رجالية">عطور رجالية</option>
-                    <option value="عطور نسائية">عطور نسائية</option>
-                </select>
-            </div>
-            <div class="form-group"><label>وصف العطر:</label><textarea id="editDesc"></textarea></div>
-            <div class="form-group"><label>السعر (د.ج):</label><input type="number" id="editPrice"></div>
-            <div class="form-group"><label>الكمية المتاحة:</label><input type="number" id="editQty"></div>
-            <button class="btn btn-save" onclick="saveEditProduct()">تحديث البيانات</button>
-            <button class="btn" onclick="closeEditModal()" style="background:#64748b; margin-top:8px;">إلغاء</button>
+    <!-- بطاقة مراقبة الـ IP -->
+    <div class="card">
+        <div class="card-title" style="justify-content: space-between;">
+            <span>> ACTIVE_CONNECTIONS (IP_LOGS)</span>
+            <button class="btn" onclick="fetchIPs()">[ REFRESH ]</button>
+        </div>
+        <div id="ipContainer" class="ip-list">
+            <div style="text-align: center; color: #8b949e; padding: 15px;">جاري جلب السجلات...</div>
         </div>
     </div>
+</div>
 
-    <script>
-      if ('serviceWorker' in navigator) {
-        navigator.serviceWorker.getRegistrations().then(function(registrations) {
-          for(let registration of registrations) {
-            registration.unregister();
-          }
-        });
-      }
-    </script>
+<script>
+    // إعدادات Firebase الخاصة بك (استبدل القيم بقيم مشروعك إذا اختلفت)
+    const firebaseConfig = {
+        apiKey: "YOUR_API_KEY",
+        authDomain: "beauty-store-4f012.firebaseapp.com",
+        projectId: "beauty-store-4f012",
+        storageBucket: "beauty-store-4f012.appspot.com",
+        messagingSenderId: "YOUR_SENDER_ID",
+        appId: "YOUR_APP_ID"
+    };
 
-    <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-        import { getFirestore, collection, addDoc, getDocs, deleteDoc, doc, getDoc, setDoc, updateDoc, serverTimestamp, query, orderBy } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+    if (!firebase.apps.length) {
+        firebase.initializeApp(firebaseConfig);
+    }
+    const db = firebase.firestore();
 
-        const firebaseConfig = {
-          apiKey: "AIzaSyD60g3bc-e6h9JMRUR3eKcD5oRO2rAb4vQ",
-          authDomain: "beauty-store-4f012.firebaseapp.com",
-          projectId: "beauty-store-4f012",
-          storageBucket: "beauty-store-4f012.firebasestorage.app",
-          messagingSenderId: "1053116874470",
-          appId: "1:1053116874470:web:32a41e8ce3e089d1920527"
-        };
-
-        const app = initializeApp(firebaseConfig);
-        const db = getFirestore(app);
-
-        let currentPass = "123";
-        let compressedImages = [];
-        let loadedProducts = [];
-
-        async function loadConfig() {
-            try {
-                const docSnap = await getDoc(doc(docRef(db, "settings", "store_config")));
-            } catch (e) {
-                // fallback if docRef is needed
-            }
-            try {
-                const docSnap = await getDoc(doc(db, "settings", "store_config"));
-                if (docSnap.exists()) {
-                    const data = docSnap.data();
-                    if (data.pass) currentPass = data.pass;
-                    if (data.whatsapp) document.getElementById('setWa').value = data.whatsapp;
-                    document.getElementById('setPass').value = currentPass;
-                }
-            } catch (e) {
-                console.error(e);
-            }
+    // تحديث كلمة السر في store_config
+    function updatePassword() {
+        const pass = document.getElementById('newPass').value.trim();
+        if (!pass) {
+            alert("يرجى إدخال كلمة سر صحيحة!");
+            return;
         }
 
-        loadConfig();
+        db.collection("store_config").doc("main").set({
+            pass: pass
+        }, { merge: true })
+        .then(() => {
+            alert("تم تحديث كلمة السر بنجاح!");
+            document.getElementById('newPass').value = '';
+        })
+        .catch(error => {
+            alert("حدث خطأ في الحفظ: " + error.message);
+        });
+    }
 
-        window.checkPassword = async function() {
-            await loadConfig();
-            const inputVal = document.getElementById('passInput').value.trim();
-            if (inputVal === currentPass) {
-                document.getElementById('loginOverlay').style.display = 'none';
-                document.getElementById('mainContent').style.display = 'block';
-                loadData();
-            } else { 
-                alert("كلمة السر غير صحيحة!"); 
+    // جلب وعرض عناوين الـ IP
+    function fetchIPs() {
+        const container = document.getElementById('ipContainer');
+        container.innerHTML = '<div style="text-align: center; color: #8b949e; padding: 15px;">جاري تحديث البيانات...</div>';
+
+        db.collection("visitors").orderBy("timestamp", "desc").get()
+        .then((snapshot) => {
+            if (snapshot.empty) {
+                container.innerHTML = '<div style="text-align: center; color: #8b949e; padding: 15px;">لا توجد اتصالات مسجلة حالياً.</div>';
+                return;
             }
-        };
 
-        window.saveSettings = async function() {
-            const wa = document.getElementById('setWa').value;
-            const pass = document.getElementById('setPass').value;
-            try {
-                await setDoc(doc(db, "settings", "store_config"), { whatsapp: wa, pass: pass }, { merge: true });
-                currentPass = pass;
-                alert("تم حفظ الإعدادات بنجاح!");
-            } catch (e) { alert("حدث خطأ في حفظ الإعدادات!"); }
-        };
+            container.innerHTML = '';
+            snapshot.forEach((doc) => {
+                const data = doc.data();
+                const ip = data.ip || "Unknown IP";
+                const time = data.timestamp ? new Date(data.timestamp.toDate()).toLocaleString('ar-EG') : "تاريخ غير معروف";
 
-        const compressFile = (file) => new Promise((resolve) => {
-            const reader = new FileReader();
-            reader.onload = (e) => {
-                const img = new Image();
-                img.src = e.target.result;
-                img.onload = () => {
-                    const canvas = document.createElement('canvas');
-                    const ctx = canvas.getContext('2d');
-                    const maxWidth = 600;
-                    canvas.width = maxWidth;
-                    canvas.height = img.height * (maxWidth / img.width);
-                    ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-                    resolve(canvas.toDataURL('image/jpeg', 0.65));
-                };
-            };
-            reader.readAsDataURL(file);
+                const item = document.createElement('div');
+                item.className = 'ip-item';
+                item.innerHTML = `
+                    <div class="ip-info">
+                        <span class="ip-address">IP: ${ip}</span>
+                        <span class="ip-time">TIME: ${time}</span>
+                    </div>
+                    <div class="actions">
+                        <button class="btn" onclick="copyText('${ip}')">نسخ</button>
+                        <button class="btn btn-danger" onclick="deleteIP('${doc.id}')">حذف</button>
+                    </div>
+                `;
+                container.appendChild(item);
+            });
+        })
+        .catch((error) => {
+            container.innerHTML = `<div style="text-align: center; color: var(--danger-red); padding: 15px;">خطأ في الجلب: ${error.message}</div>`;
         });
+    }
 
-        document.getElementById('pImgFiles').addEventListener('change', async function(e) {
-            const files = Array.from(e.target.files).slice(0, 3);
-            if (files.length === 0) return;
-            compressedImages = [];
-            for (let file of files) {
-                const b64 = await compressFile(file);
-                compressedImages.push(b64);
-            }
-        });
+    function copyText(text) {
+        navigator.clipboard.writeText(text);
+        alert("تم نسخ العنوان: " + text);
+    }
 
-        document.getElementById('productForm').addEventListener('submit', async (e) => {
-            e.preventDefault();
-            if (compressedImages.length === 0) return alert("اختر صورة واحدة على الأقل!");
-
-            const submitBtn = document.getElementById('submitBtn');
-            const loading = document.getElementById('loadingIndicator');
-            submitBtn.disabled = true; loading.style.display = 'block';
-
-            try {
-                await addDoc(collection(db, "products"), {
-                    name: document.getElementById('pName').value,
-                    category: document.getElementById('pCat').value,
-                    description: document.getElementById('pDesc').value || "",
-                    price: Number(document.getElementById('pPrice').value),
-                    stock: Number(document.getElementById('pQty').value) || 1,
-                    image: compressedImages[0],
-                    images: compressedImages,
-                    createdAt: serverTimestamp()
-                });
-                alert("تم إضافة العطر بنجاح!");
-                document.getElementById('productForm').reset();
-                compressedImages = [];
-                loadProducts();
-            } catch (err) { alert("حدث خطأ أثناء حفظ المنتج!"); }
-            finally { submitBtn.disabled = false; loading.style.display = 'none'; }
-        });
-
-        function loadData() { 
-            loadOrders(); 
-            loadVisitors();
-            loadProducts(); 
+    function deleteIP(id) {
+        if (confirm("هل انت محقق من حذف السجل؟")) {
+            db.collection("visitors").doc(id).delete()
+            .then(() => {
+                fetchIPs();
+            })
+            .catch(error => alert("خطأ الحذف: " + error.message));
         }
+    }
 
-        // جلب الطلبات الواردة
-        window.loadOrders = async function() {
-            const container = document.getElementById('ordersContainer');
-            try {
-                let snapshot;
-                try {
-                    const q = query(collection(db, "orders"), orderBy("createdAt", "desc"));
-                    snapshot = await getDocs(q);
-                } catch (err) {
-                    snapshot = await getDocs(collection(db, "orders"));
-                }
+    // تشغيل جلب البيانات فور فتح الصفحة
+    window.onload = fetchIPs;
+</script>
 
-                container.innerHTML = snapshot.empty ? "<p>لا توجد طلبات حالياً.</p>" : "";
-                snapshot.forEach(docSnap => {
-                    const o = docSnap.data();
-                    const clientIP = o.ipAddress || o.userIP || 'غير معروف';
-                    const timeStr = o.createdAt && o.createdAt.toDate ? o.createdAt.toDate().toLocaleString('ar-DZ') : '';
-                    
-                    container.innerHTML += `
-                        <div class="order-card">
-                            <div>
-                                <strong>👤 ${o.customerName || 'بدون اسم'}</strong> 
-                                (${o.phone ? `<span id="p-${docSnap.id}">${o.phone}</span>` : 'بدون رقم'})
-                                ${o.phone ? `<button class="btn-copy" onclick="copyText('${o.phone}')">📋 نسخ</button>` : ''}<br>
-                                📍 ${o.address || 'بدون عنوان'}<br>
-                                🌐 IP: <span class="ip-badge">${clientIP}</span><br>
-                                🛒 ${o.items ? o.items.map(i => `${i.name} [x${i.qty}]`).join(', ') : ''} - <strong>${o.total || 0} د.ج</strong>
-                                ${timeStr ? `<span class="time-badge">🕒 ${timeStr}</span>` : ''}
-                            </div>
-                            <button class="btn-delete" onclick="deleteOrder('${docSnap.id}')">حذف</button>
-                        </div>
-                    `;
-                });
-            } catch (e) { 
-                console.error(e);
-                container.innerHTML = "خطأ في تحميل الطلبات."; 
-            }
-        };
-
-        // جلب سجل الزيارات الفوري (Visitors)
-        window.loadVisitors = async function() {
-            const container = document.getElementById('visitorsContainer');
-            try {
-                let snapshot;
-                try {
-                    const q = query(collection(db, "visitors"), orderBy("visitedAt", "desc"));
-                    snapshot = await getDocs(q);
-                } catch (err) {
-                    snapshot = await getDocs(collection(db, "visitors"));
-                }
-
-                container.innerHTML = snapshot.empty ? "<p>لا توجد زيارات مسجلة حالياً.</p>" : "";
-                snapshot.forEach(docSnap => {
-                    const v = docSnap.data();
-                    const ip = v.ipAddress || 'غير معروف';
-                    const timeStr = v.visitedAt && v.visitedAt.toDate ? v.visitedAt.toDate().toLocaleString('ar-DZ') : 'الآن';
-
-                    container.innerHTML += `
-                        <div class="visitor-card">
-                            <div>
-                                🌐 عنوان الـ IP: <span class="ip-badge">${ip}</span>
-                                <button class="btn-copy" onclick="copyText('${ip}')">📋 نسخ IP</button><br>
-                                <span class="time-badge">🕒 وقت الدخول: ${timeStr}</span>
-                            </div>
-                            <button class="btn-delete" onclick="deleteVisitor('${docSnap.id}')">حذف</button>
-                        </div>
-                    `;
-                });
-            } catch (e) { 
-                console.error(e);
-                container.innerHTML = "خطأ في تحميل سجل الزوار."; 
-            }
-        };
-
-        window.copyText = function(text) {
-            navigator.clipboard.writeText(text);
-            alert("تم النسخ: " + text);
-        };
-
-        async function loadProducts() {
-            const container = document.getElementById('productsContainer');
-            try {
-                const snapshot = await getDocs(collection(db, "products"));
-                loadedProducts = [];
-                container.innerHTML = snapshot.empty ? "<p>لا توجد منتجات.</p>" : "";
-                snapshot.forEach(docSnap => {
-                    const prod = { id: docSnap.id, ...docSnap.data() };
-                    loadedProducts.push(prod);
-                    const mainImg = prod.images && prod.images.length ? prod.images[0] : prod.image;
-                    container.innerHTML += `
-                        <div class="product-item">
-                            <img src="${mainImg || 'https://via.placeholder.com/150'}">
-                            <h4>${prod.name}</h4>
-                            <p style="color:var(--primary); font-weight:bold;">${prod.price} د.ج</p>
-                            <p style="font-size:0.8rem; color:#94a3b8;">الكمية: ${prod.stock || 1}</p>
-                            <div style="display:flex; gap:5px; margin-top:5px; justify-content:center;">
-                                <button class="btn-edit" onclick="openEditModal('${prod.id}')">تعديل</button>
-                                <button class="btn-delete" onclick="deleteProduct('${prod.id}')">حذف</button>
-                            </div>
-                        </div>
-                    `;
-                });
-            } catch (e) { container.innerHTML = "خطأ في تحميل المنتجات."; }
-        }
-
-        window.openEditModal = function(id) {
-            const prod = loadedProducts.find(p => p.id === id);
-            if(prod) {
-                document.getElementById('editId').value = prod.id;
-                document.getElementById('editName').value = prod.name;
-                document.getElementById('editCat').value = prod.category || 'عطور صيفية';
-                document.getElementById('editDesc').value = prod.description || '';
-                document.getElementById('editPrice').value = prod.price;
-                document.getElementById('editQty').value = prod.stock || 1;
-                document.getElementById('editModal').style.display = 'flex';
-            }
-        };
-
-        window.closeEditModal = function() { document.getElementById('editModal').style.display = 'none'; };
-
-        window.saveEditProduct = async function() {
-            const id = document.getElementById('editId').value;
-            try {
-                await updateDoc(doc(db, "products", id), {
-                    name: document.getElementById('editName').value,
-                    category: document.getElementById('editCat').value,
-                    description: document.getElementById('editDesc').value,
-                    price: Number(document.getElementById('editPrice').value),
-                    stock: Number(document.getElementById('editQty').value)
-                });
-                alert("تم تحديث المنتج بنجاح!");
-                closeEditModal();
-                loadProducts();
-            } catch (e) { alert("خطأ في التعديل!"); }
-        };
-
-        window.deleteOrder = async function(id) {
-            if(confirm("حذف هذا الطلب؟")) { 
-                await deleteDoc(doc(db, "orders", id)); 
-                loadOrders(); 
-            }
-        };
-
-        window.deleteVisitor = async function(id) {
-            if(confirm("حذف تسجيل هذه الزيارة؟")) { 
-                await deleteDoc(doc(db, "visitors", id)); 
-                loadVisitors(); 
-            }
-        };
-
-        window.deleteProduct = async function(id) {
-            if(confirm("هل أنت تأكد من حذف هذا المنتج؟")) { 
-                try {
-                    await deleteDoc(doc(db, "products", id)); 
-                    alert("تم حذف المنتج بنجاح!");
-                    loadProducts(); 
-                } catch(e) {
-                    alert("حدث خطأ أثناء الحذف!");
-                }
-            }
-        };
-    </script>
 </body>
 </html>
