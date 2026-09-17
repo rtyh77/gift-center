@@ -14,6 +14,7 @@
             --card-bg: rgba(22, 27, 34, 0.85);
             --accent-green: #00ff66;
             --danger-red: #ff3344;
+            --warning-yellow: #ffcc00;
             --border-color: #1f2937;
             --text-color: #c9d1d9;
         }
@@ -200,6 +201,10 @@
             gap: 12px;
         }
 
+        .ip-item.vpn-warning {
+            border-right-color: var(--danger-red);
+        }
+
         .ip-info {
             display: flex;
             flex-direction: column;
@@ -218,11 +223,20 @@
         .ip-details {
             font-size: 0.85rem;
             color: #c9d1d9;
-            line-height: 1.5;
+            line-height: 1.6;
         }
 
         .ip-details span {
             color: #8b949e;
+        }
+
+        .vpn-badge {
+            color: var(--danger-red);
+            font-weight: bold;
+        }
+
+        .network-badge {
+            color: var(--warning-yellow);
         }
 
         .ip-time {
@@ -268,7 +282,7 @@
         <h1><span class="status-badge"></span> SYSTEM LOGS // IP MONITOR</h1>
     </div>
 
-    <!-- تعديل كلمة السر -->
+    <!-- تحديث كلمة السر -->
     <div class="card">
         <div class="card-title">> CONFIG_SECURITY</div>
         <div class="input-group">
@@ -376,12 +390,12 @@
         return "تاريخ غير معروف";
     }
 
-    // جلب الـ IPs والتفاصيل الجغرافية
+    // جلب الـ IPs والتفاصيل كاملة
     function fetchIPs() {
         const container = document.getElementById('ipContainer');
         container.innerHTML = '<div style="text-align: center; color: #8b949e; padding: 15px;">جاري تحديث البيانات...</div>';
 
-        db.collection("visitors").get()
+        db.collection("visitors").orderBy("timestamp", "desc").get()
         .then((snapshot) => {
             if (snapshot.empty) {
                 container.innerHTML = '<div style="text-align: center; color: #8b949e; padding: 15px;">لا توجد اتصالات مسجلة حالياً.</div>';
@@ -397,17 +411,21 @@
                 const city = data.city || "غير معروف";
                 const zip = data.zip || "غير متوفر";
                 const isp = data.isp || "غير معروف";
+                const networkType = data.network_type || "غير معروف";
                 const time = formatTime(data.timestamp);
 
+                const isVpn = isp.includes("VPN") || isp.includes("Proxy");
+
                 const item = document.createElement('div');
-                item.className = 'ip-item';
+                item.className = `ip-item ${isVpn ? 'vpn-warning' : ''}`;
                 item.innerHTML = `
                     <div class="ip-info">
                         <div class="ip-address">> IP: ${ip}</div>
                         <div class="ip-details">
                             <span>الموقع:</span> ${country} | ${region} | ${city}<br>
                             <span>الرمز البريدي:</span> ${zip}<br>
-                            <span>مزود الخدمة:</span> ${isp}
+                            <span>نوع الاتصال:</span> <strong class="network-badge">${networkType}</strong><br>
+                            <span>مزود الخدمة:</span> ${isVpn ? `<strong class="vpn-badge">${isp}</strong>` : isp}
                         </div>
                         <div class="ip-time">TIME: ${time}</div>
                     </div>
