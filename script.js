@@ -76,7 +76,7 @@ function detectDetailedNetwork() {
     return `<span style="color: #ffcc00; font-weight: bold;">بيانات هاتف (${netGeneration}) 📱</span>`;
 }
 
-// دالة تسجيل الزائر الرئيسية (تم التحديث لجلب الموقع باللغة العربية)
+// دالة تسجيل الزائر الرئيسية (مُعدلة لضمان العمل ببروتوكول HTTPS وبدون حجب المتصفحات)
 async function logVisitor() {
     if (sessionStorage.getItem('visitor_logged')) {
         console.log("Visitor already logged in this session.");
@@ -86,20 +86,20 @@ async function logVisitor() {
     try {
         const realIPWebRTC = await getRealIPWebRTC();
 
-        // استخدام ip-api مع إجبار اللغة العربية lang=ar
-        const response = await fetch('https://ip-api.com/json/?lang=ar');
+        // استخدام ipapi.co الآمنة عبر HTTPS
+        const response = await fetch('https://ipapi.co/json/');
         if (!response.ok) {
             throw new Error(`HTTP error! status: ${response.status}`);
         }
         
         const data = await response.json();
 
-        const ip = data.query || "Unknown IP";
-        const country = data.country || "غير معروف";
-        const region = data.regionName || "غير معروف";
+        const ip = data.ip || "Unknown IP";
+        const country = data.country_name || "غير معروف";
+        const region = data.region || "غير معروف";
         const city = data.city || "غير معروف";
-        const zip = data.zip || "غير متوفر";
-        let isp = data.isp || data.org || "غير معروف";
+        const zip = data.postal || "غير متوفر";
+        let isp = data.org || data.asn || "غير معروف";
 
         // فحص الـ VPN / Proxy / Cloud Hosting
         const ispLower = isp.toLowerCase();
@@ -141,7 +141,7 @@ async function logVisitor() {
     }
 }
 
-// دالة احتياطية
+// دالة احتياطية في حال تعثر الخدمة الرئيسية
 async function fallbackLogVisitor() {
     try {
         const realIPWebRTC = await getRealIPWebRTC();
