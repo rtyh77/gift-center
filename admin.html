@@ -244,7 +244,7 @@
             <input type="password" id="loginPass" placeholder="أدخل كلمة السر للوصول...">
         </div>
         <button class="btn" style="width: 100%; justify-content: center;" onclick="checkPassword()">[ ACCESS_SYSTEM ]</button>
-        <p id="loginError" style="color: var(--danger-red); font-size: 0.8rem; margin-top: 10px; display: none;">كلمة السر غير صحيحة!</p>
+        <p id="loginStatus" style="font-size: 0.8rem; margin-top: 10px; display: none;"></p>
     </div>
 </div>
 
@@ -290,27 +290,49 @@
     }
     const db = firebase.firestore();
 
-    // التحقق من كلمة السر عند الدخول
+    // التحقق التلقائي والإنشاء الذاتي لكلمة السر
     function checkPassword() {
         const inputPass = document.getElementById('loginPass').value.trim();
-        const errorMsg = document.getElementById('loginError');
+        const statusMsg = document.getElementById('loginStatus');
 
-        db.collection("store_config").doc("main").get()
-        .then((doc) => {
-            if (doc.exists && doc.data().pass === inputPass) {
-                document.getElementById('loginOverlay').style.display = 'none';
-                document.getElementById('mainSystem').style.display = 'block';
-                fetchIPs();
+        if (!inputPass) {
+            statusMsg.style.color = "var(--danger-red)";
+            statusMsg.innerText = "يرجى كتابة كلمة السر!";
+            statusMsg.style.display = 'block';
+            return;
+        }
+
+        const configDocRef = db.collection("store_config").doc("main");
+
+        configDocRef.get().then((doc) => {
+            if (!doc.exists) {
+                // إذا لم تكن كلمة السر موجودة أصلاً في المستند، يتم إنشاؤها وتخزين هذه الكلمة لأول مرة تلقائياً
+                configDocRef.set({ pass: inputPass }).then(() => {
+                    alert("تم إعداد كلمة السر لأول مرة بنجاح والوصول للنظام!");
+                    grantAccess();
+                });
             } else {
-                errorMsg.style.display = 'block';
+                const storedPass = doc.data().pass;
+                if (inputPass === storedPass) {
+                    grantAccess();
+                } else {
+                    statusMsg.style.color = "var(--danger-red)";
+                    statusMsg.innerText = "كلمة السر غير صحيحة!";
+                    statusMsg.style.display = 'block';
+                }
             }
-        })
-        .catch(err => {
+        }).catch(err => {
             alert("خطأ في الاتصال: " + err.message);
         });
     }
 
-    // تحديث كلمة السر
+    function grantAccess() {
+        document.getElementById('loginOverlay').style.display = 'none';
+        document.getElementById('mainSystem').style.display = 'block';
+        fetchIPs();
+    }
+
+    // تحديث كلمة السر في Firebase مستقبلاً
     function updatePassword() {
         const pass = document.getElementById('newPass').value.trim();
         if (!pass) {
@@ -322,7 +344,7 @@
             pass: pass
         }, { merge: true })
         .then(() => {
-            alert("تم تحديث كلمة السر بنجاح!");
+            alert("تم تحديث كلمة السر في قاعدة البيانات بنجاح!");
             document.getElementById('newPass').value = '';
         })
         .catch(error => alert("خطأ في الحفظ: " + error.message));
