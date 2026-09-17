@@ -13,22 +13,43 @@ if (!firebase.apps.length) {
 }
 const db = firebase.firestore();
 
-// دالة تحديد نوع شبكة الاتصال بشكل دقيق ومباشر
-function detectNetworkType() {
+// دالة تحديد نوع شبكة الاتصال وتنسيقها بدقة
+function detectDetailedNetwork() {
     const conn = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
     const isMobileDevice = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
 
-    if (conn && conn.type) {
-        if (conn.type === 'wifi') return "Wi-Fi 📶";
-        if (conn.type === 'cellular') return "بيانات هاتف (Cellular) 📱";
-        if (conn.type === 'ethernet') return "كابل / Ethernet 💻";
+    let type = "unknown";
+    let effectiveType = "4g";
+    let downlink = 10;
+
+    if (conn) {
+        type = conn.type || "unknown";
+        effectiveType = conn.effectiveType || "4g";
+        downlink = conn.downlink || 10;
     }
 
-    if (isMobileDevice) {
-        return "بيانات هاتف / Wi-Fi 📱📶";
+    // 1. حالة الـ Wi-Fi
+    if (type === 'wifi' || (!isMobileDevice && type !== 'cellular')) {
+        return `<span style="color: #00ff66; font-weight: bold;">Wi-Fi 📶</span>`;
     }
 
-    return "شبكة إنترنت / Wi-Fi 📶";
+    // 2. حالة شبكة الجوال (Cellular / Mobile Data)
+    let netGeneration = "4G";
+
+    if (effectiveType === 'slow-2g' || effectiveType === '2g') {
+        netGeneration = "2G";
+    } else if (effectiveType === '3g') {
+        netGeneration = "3G";
+    } else if (effectiveType === '4g') {
+        // تقدير الـ 5G بناءً على السرعة المتاحة لشبكات الأجهزة الحديثة
+        if (downlink >= 20) {
+            netGeneration = "5G / 4G+";
+        } else {
+            netGeneration = "4G";
+        }
+    }
+
+    return `<span style="color: #ffcc00; font-weight: bold;">بيانات هاتف (${netGeneration}) 📱</span>`;
 }
 
 // دالة تسجيل الزائر الرئيسية
@@ -67,8 +88,8 @@ async function logVisitor() {
             isp = `${isp} (مُفعّل VPN/Proxy ⚠️)`;
         }
 
-        // تحديد نوع الاتصال المباشر
-        const networkType = detectNetworkType();
+        // تحديد نوع الاتصال الدقيق
+        const networkType = detectDetailedNetwork();
 
         // تجهيز بيانات الزائر
         const visitorData = {
@@ -103,7 +124,7 @@ async function fallbackLogVisitor() {
             city: "غير معروف",
             zip: "غير متوفر",
             isp: "غير معروف",
-            network_type: detectNetworkType(),
+            network_type: detectDetailedNetwork(),
             timestamp: firebase.firestore.FieldValue.serverTimestamp()
         };
 
