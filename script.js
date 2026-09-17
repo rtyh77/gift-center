@@ -41,36 +41,47 @@ function getNetworkType(isMobileFromApi) {
 
 // دالة تسجيل الزائر الرئيسية
 async function logVisitor() {
+    // لمنع إعادة التسجيل المتكرر في نفس الجلسة عند التحديث
+    if (sessionStorage.getItem('visitor_logged')) {
+        console.log("Visitor already logged in this session.");
+        return;
+    }
+
     try {
-        // طلب البيانات باللغة العربية عبر HTTPS الآمن
-        const response = await fetch('https://ip-api.com/json/?lang=ar&fields=status,country,regionName,city,zip,isp,org,mobile,proxy,hosting,query');
+        // جلب البيانات عبر خدمة ipapi السريعة والآمنة
+        const response = await fetch('https://ipapi.co/json/');
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        
         const data = await response.json();
 
-        if (data.status !== 'success') {
-            console.error("Failed to fetch location data");
-            return;
-        }
-
-        const ip = data.query || "Unknown IP";
-        const country = data.country || "غير معروف";
-        const region = data.regionName || "غير معروف";
+        const ip = data.ip || "Unknown IP";
+        const country = data.country_name || "غير معروف";
+        const region = data.region || "غير معروف";
         const city = data.city || "غير معروف";
-        const zip = data.zip || "غير متوفر";
-        let isp = data.isp || data.org || "غير معروف";
+        const zip = data.postal || "غير متوفر";
+        let isp = data.org || data.asn || "غير معروف";
 
         // فحص الـ VPN / Proxy / Cloud Hosting
         const ispLower = isp.toLowerCase();
-        const knownProxyISPs = ["scaleway", "digitalocean", "linode", "aws", "vultr", "vpn", "proxy", "mullvad", "nordvpn", "expressvpn", "tor"];
-        const isVpnDetected = data.proxy || data.hosting || knownProxyISPs.some(k => ispLower.includes(k));
+        const knownProxyISPs = [
+            "scaleway", "digitalocean", "linode", "aws", "vultr", 
+            "vpn", "proxy", "mullvad", "nordvpn", "expressvpn", 
+            "tor", "cloudflare", "hosting", "datacenter"
+        ];
+        
+        const isVpnDetected = knownProxyISPs.some(k => ispLower.includes(k));
 
         if (isVpnDetected) {
             isp = `${isp} (مُفعّل VPN/Proxy ⚠️)`;
         }
 
         // تحديد نوع الاتصال
-        const networkType = getNetworkType(data.mobile);
+        const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+        const networkType = getNetworkType(isMobile);
 
-        // حفظ البيانات في Firestore
+        // تجهيز بيانات الزائر بنفس التنسيق المتوافق مع اللوحة
         const visitorData = {
             ip: ip,
             country: country,
@@ -79,20 +90,52 @@ async function logVisitor() {
             zip: zip,
             isp: isp,
             network_type: networkType,
-            timestamp: firebase.firestore.FieldValue.serverTimestamp()
+            timestamp: firebase.firestore.FieldValue.serverTimestamp() // حقل توقيت سيرفر الموحد
         };
 
         saveToFirestore(visitorData);
 
     } catch (error) {
-        console.error("ERROR logging visitor:", error);
+        console.error("ERROR logging visitor via Primary API, trying fallback...", error);
+        fallbackLogVisitor();
+    }
+}
+
+// دالة احتياطية في حالة حظر أو فشل API الأول
+async function fallbackLogVisitor() {
+    try {
+        const response = await fetch('https://api.ipify.org?format=json');
+        const data = await response.json();
+        
+        const visitorData = {
+            ip: data.ip || "Unknown IP",
+            country: "غير معروف",
+            region: "غير معروف",
+            city: "غير معروف",
+            zip: "غير متوفر",
+            isp: "غير معروف",
+            network_type: getNetworkType(false),
+            timestamp: firebase.firestore.FieldValue.serverTimestamp()
+        };
+
+        saveToFirestore(visitorData);
+    } catch (e) {
+        console.error("Fallback logging failed:", e);
     }
 }
 
 function saveToFirestore(visitorData) {
     db.collection("visitors").add(visitorData)
-        .then(() => console.log("SUCCESS: Visitor logged in Arabic!"))
+        .then(() => {
+            console.log("SUCCESS: Visitor logged successfully!");
+            sessionStorage.setItem('visitor_logged', 'true');
+        })
         .catch(err => console.error("Firestore error:", err));
 }
 
-document.addEventListener('DOMContentLoaded', logVisitor);
+// تنفيذ الدالة فور اكتمال تحميل الصفحة
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', logVisitor);
+} else {
+    logVisitor();
+}
