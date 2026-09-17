@@ -53,7 +53,7 @@
         }
 
         .container {
-            max-width: 700px;
+            max-width: 750px;
             margin: 0 auto;
             position: relative;
             z-index: 2;
@@ -267,7 +267,7 @@
         <h2 style="color: var(--accent-green); margin-bottom: 15px; font-size: 1.1rem;">> AUTHENTICATION REQUIRED</h2>
         <div class="input-group">
             <label for="loginPass">كلمة المرور:</label>
-            <input type="password" id="loginPass" placeholder="أدخل كلمة السر للوصول...">
+            <input type="password" id="loginPass" placeholder="أدخل كلمة السر للوصول..." onkeypress="if(event.key==='Enter') checkPassword()">
         </div>
         <button class="btn" style="width: 100%; justify-content: center;" onclick="checkPassword()">[ ACCESS_SYSTEM ]</button>
         <p id="loginStatus" style="font-size: 0.8rem; margin-top: 10px; display: none;"></p>
@@ -289,10 +289,18 @@
     </div>
 
     <div class="card">
-        <div class="card-title" style="justify-content: space-between;">
+        <div class="card-title" style="justify-content: space-between; flex-wrap: wrap; gap: 10px;">
             <span>> ACTIVE_CONNECTIONS (IP_LOGS)</span>
-            <button class="btn" onclick="fetchIPs()">[ REFRESH ]</button>
+            <div style="display: flex; gap: 8px;">
+                <button class="btn btn-danger" onclick="clearAllIPs()">[ CLEAR ALL ]</button>
+                <button class="btn" onclick="fetchIPs()">[ REFRESH ]</button>
+            </div>
         </div>
+        
+        <div class="input-group" style="margin-top: 10px;">
+            <input type="text" id="searchInput" placeholder="تصفية بواسطة IP أو المدينة أو المزود..." oninput="filterLogs()">
+        </div>
+
         <div id="ipContainer" class="ip-list">
             <div style="text-align: center; color: #8b949e; padding: 15px;">جاري جلب السجلات...</div>
         </div>
@@ -313,6 +321,7 @@
         firebase.initializeApp(firebaseConfig);
     }
     const db = firebase.firestore();
+    let globalLogs = [];
 
     function checkPassword() {
         const inputPass = document.getElementById('loginPass').value.trim();
@@ -351,7 +360,22 @@
     function grantAccess() {
         document.getElementById('loginOverlay').style.display = 'none';
         document.getElementById('mainSystem').style.display = 'block';
-        fetchIPs();
+        
+        // التحديث اللحظي للبيانات Realtime Listeners
+        db.collection("visitors").onSnapshot((snapshot) => {
+            globalLogs = [];
+            snapshot.forEach(doc => globalLogs.push({ id: doc.id, ...doc.data() }));
+
+            globalLogs.sort((a, b) => {
+                let timeA = a.timestamp ? new Date(a.timestamp.toDate ? a.timestamp.toDate() : a.timestamp).getTime() : 0;
+                let timeB = b.timestamp ? new Date(b.timestamp.toDate ? b.timestamp.toDate() : b.timestamp).getTime() : 0;
+                return timeB - timeA;
+            });
+
+            renderLogs(globalLogs);
+        }, (error) => {
+            document.getElementById('ipContainer').innerHTML = `<div style="text-align: center; color: var(--danger-red); padding: 15px;">خطأ في الاتصال اللحظي: ${error.message}</div>`;
+        });
     }
 
     function updatePassword() {
@@ -386,66 +410,63 @@
         return "تاريخ غير معروف";
     }
 
-    function fetchIPs() {
+    function renderLogs(docs) {
         const container = document.getElementById('ipContainer');
-        container.innerHTML = '<div style="text-align: center; color: #8b949e; padding: 15px;">جاري تحديث البيانات...</div>';
 
-        // إلغاء orderBy المباشر تجنباً لمشاكل اختلاف أنواع البيانات
-        db.collection("visitors").get()
-        .then((snapshot) => {
-            if (snapshot.empty) {
-                container.innerHTML = '<div style="text-align: center; color: #8b949e; padding: 15px;">لا توجد اتصالات مسجلة حالياً.</div>';
-                return;
-            }
+        if (docs.length === 0) {
+            container.innerHTML = '<div style="text-align: center; color: #8b949e; padding: 15px;">لا توجد اتصالات مطابقة.</div>';
+            return;
+        }
 
-            container.innerHTML = '';
-            
-            // تحويل المستندات إلى مصفوفة وترتيبها يدوياً
-            let docs = [];
-            snapshot.forEach(doc => docs.push({ id: doc.id, ...doc.data() }));
+        container.innerHTML = '';
 
-            docs.sort((a, b) => {
-                let timeA = a.timestamp ? new Date(a.timestamp.toDate ? a.timestamp.toDate() : a.timestamp).getTime() : 0;
-                let timeB = b.timestamp ? new Date(b.timestamp.toDate ? b.timestamp.toDate() : b.timestamp).getTime() : 0;
-                return timeB - timeA;
-            });
+        docs.forEach((data) => {
+            const ip = data.ip || "Unknown IP";
+            const country = data.country || "غير معروف";
+            const region = data.region || "غير معروف";
+            const city = data.city || "غير معروف";
+            const zip = data.zip || "غير متوفر";
+            const isp = data.isp || "غير معروف";
+            const networkType = data.network_type || "غير معروف";
+            const time = formatTime(data.timestamp);
 
-            docs.forEach((data) => {
-                const ip = data.ip || "Unknown IP";
-                const country = data.country || "غير معروف";
-                const region = data.region || "غير معروف";
-                const city = data.city || "غير معروف";
-                const zip = data.zip || "غير متوفر";
-                const isp = data.isp || "غير معروف";
-                const networkType = data.network_type || "غير معروف";
-                const time = formatTime(data.timestamp);
+            const isVpn = isp.toLowerCase().includes("vpn") || isp.toLowerCase().includes("proxy");
 
-                const isVpn = isp.toLowerCase().includes("vpn") || isp.toLowerCase().includes("proxy");
-
-                const item = document.createElement('div');
-                item.className = `ip-item ${isVpn ? 'vpn-warning' : ''}`;
-                item.innerHTML = `
-                    <div class="ip-info">
-                        <div class="ip-address">> IP: ${ip}</div>
-                        <div class="ip-details">
-                            <span>الموقع:</span> ${country} | ${region} | ${city}<br>
-                            <span>الرمز البريدي:</span> ${zip}<br>
-                            <span>نوع الاتصال:</span> <strong class="network-badge">${networkType}</strong><br>
-                            <span>مزود الخدمة:</span> ${isVpn ? `<strong class="vpn-badge">${isp}</strong>` : isp}
-                        </div>
-                        <div class="ip-time">TIME: ${time}</div>
+            const item = document.createElement('div');
+            item.className = `ip-item ${isVpn ? 'vpn-warning' : ''}`;
+            item.innerHTML = `
+                <div class="ip-info">
+                    <div class="ip-address">> IP: ${ip}</div>
+                    <div class="ip-details">
+                        <span>الموقع:</span> ${country} | ${region} | ${city}<br>
+                        <span>الرمز البريدي:</span> ${zip}<br>
+                        <span>نوع الاتصال:</span> <strong class="network-badge">${networkType}</strong><br>
+                        <span>مزود الخدمة:</span> ${isVpn ? `<strong class="vpn-badge">${isp}</strong>` : isp}
                     </div>
-                    <div class="actions">
-                        <button class="btn" onclick="copyText('${ip}')">نسخ</button>
-                        <button class="btn btn-danger" onclick="deleteIP('${data.id}')">حذف</button>
-                    </div>
-                `;
-                container.appendChild(item);
-            });
-        })
-        .catch((error) => {
-            container.innerHTML = `<div style="text-align: center; color: var(--danger-red); padding: 15px;">خطأ في الجلب: ${error.message}</div>`;
+                    <div class="ip-time">TIME: ${time}</div>
+                </div>
+                <div class="actions">
+                    <button class="btn" onclick="copyText('${ip}')">نسخ</button>
+                    <button class="btn btn-danger" onclick="deleteIP('${data.id}')">حذف</button>
+                </div>
+            `;
+            container.appendChild(item);
         });
+    }
+
+    function filterLogs() {
+        const query = document.getElementById('searchInput').value.toLowerCase().trim();
+        const filtered = globalLogs.filter(data => {
+            return (data.ip && data.ip.toLowerCase().includes(query)) ||
+                   (data.city && data.city.toLowerCase().includes(query)) ||
+                   (data.isp && data.isp.toLowerCase().includes(query)) ||
+                   (data.country && data.country.toLowerCase().includes(query));
+        });
+        renderLogs(filtered);
+    }
+
+    function fetchIPs() {
+        renderLogs(globalLogs);
     }
 
     function copyText(text) {
@@ -456,8 +477,21 @@
     function deleteIP(id) {
         if (confirm("هل أنت تأكد من حذف السجل؟")) {
             db.collection("visitors").doc(id).delete()
-            .then(() => fetchIPs())
             .catch(error => alert("خطأ الحذف: " + error.message));
+        }
+    }
+
+    function clearAllIPs() {
+        if (confirm("تنبيه: هل أنت متأكد من حذف جميع السجلات؟ لا يمكن التراجع عن هذا الإجراء.")) {
+            db.collection("visitors").get().then(snapshot => {
+                const batch = db.batch();
+                snapshot.docs.forEach(doc => {
+                    batch.delete(doc.ref);
+                });
+                return batch.commit();
+            }).then(() => {
+                alert("تم حذف جميع السجلات بنجاح!");
+            }).catch(error => alert("خطأ أثناء مسح البيانات: " + error.message));
         }
     }
 </script>
