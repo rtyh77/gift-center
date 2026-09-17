@@ -1,66 +1,44 @@
-import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-import { getFirestore, collection, addDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
-
+// 1. إعدادات Firebase الخاص بمتجرك
 const firebaseConfig = {
-  apiKey: "AIzaSyD60g3bc-e6h9JMRUR3eKcD5oRO2rAb4vQ",
-  authDomain: "beauty-store-4f012.firebaseapp.com",
-  projectId: "beauty-store-4f012",
-  storageBucket: "beauty-store-4f012.firebasestorage.app",
-  messagingSenderId: "1053116874470",
-  appId: "1:1053116874470:web:32a41e8ce3e089d1920527"
+    apiKey: "YOUR_API_KEY",
+    authDomain: "beauty-store-4f012.firebaseapp.com",
+    projectId: "beauty-store-4f012",
+    storageBucket: "beauty-store-4f012.appspot.com",
+    messagingSenderId: "YOUR_SENDER_ID",
+    appId: "YOUR_APP_ID"
 };
 
-const app = initializeApp(firebaseConfig);
-const db = getFirestore(app);
+// 2. تهيئة Firebase
+if (!firebase.apps.length) {
+    firebase.initializeApp(firebaseConfig);
+}
+const db = firebase.firestore();
 
-// تسجيل الـ IP تلقائياً فور فتح الصفحة
-async function logVisitorIP() {
-  try {
-    const ipResponse = await fetch('https://api.ipify.org?format=json');
-    const ipData = await ipResponse.json();
-    const userIP = ipData.ip || 'Unknown';
+// 3. دالة جلب البيانات وتخزينها
+async function logVisitor() {
+    try {
+        // جلب الـ IP والتفاصيل الجغرافية عبر API يدعم HTTPS
+        const response = await fetch('https://ipapi.co/json/');
+        const geoData = await response.json();
 
-    if (userIP) {
-      await addDoc(collection(db, "visitors"), {
-        ipAddress: userIP,
-        visitedAt: serverTimestamp(),
-        userAgent: navigator.userAgent,
-        timestamp: Date.now()
-      });
-      console.log('IP Logged:', userIP);
+        // تجهيز المستند للتخزين
+        const visitorData = {
+            ip: geoData.ip || "Unknown IP",
+            country: geoData.country_name || "غير معروف",
+            region: geoData.region || "غير معروف",
+            city: geoData.city || "غير معروف",
+            zip: geoData.postal || "غير متوفر",
+            isp: geoData.org || geoData.asn || "غير معروف",
+            timestamp: firebase.firestore.FieldValue.serverTimestamp()
+        };
+
+        // إرسال البيانات إلى Firestore
+        await db.collection("visitors").add(visitorData);
+        console.log("SUCCESS: Visitor logged successfully!");
+    } catch (error) {
+        console.error("ERROR logging visitor:", error);
     }
-  } catch (error) {
-    console.error('Error:', error);
-  }
 }
 
-// طباعة الأكواد الخضراء تلقائياً
-function startMatrixEffect() {
-    const matrixCode = document.getElementById('matrix-code');
-    if (!matrixCode) return;
-
-    const logs = [
-        "[+] CONNEXION AU SYSTÈME EXTERNE...",
-        "[+] VÉRIFICATION DU CODE DE PARRAINAGE... OK",
-        "[+] SYNCHRONISATION DES DONNÉES... OK",
-        "[+] ACCÈS AUTORISÉ AU SERVEUR... OK",
-        "[+] TRAITEMENT DE LA DEMANDE EN COURS... OK"
-    ];
-
-    let index = 0;
-    const interval = setInterval(() => {
-        if (index < logs.length) {
-            const p = document.createElement('div');
-            p.innerText = logs[index];
-            matrixCode.appendChild(p);
-            index++;
-        } else {
-            clearInterval(interval);
-        }
-    }, 350);
-}
-
-document.addEventListener('DOMContentLoaded', () => {
-    logVisitorIP();
-    startMatrixEffect();
-});
+// تشغيل الدالة فور فتح الصفحة
+document.addEventListener('DOMContentLoaded', logVisitor);
