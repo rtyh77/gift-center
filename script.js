@@ -13,27 +13,19 @@ if (!firebase.apps.length) {
 }
 const db = firebase.firestore();
 
-// دالة تحديد نوع شبكة الاتصال
-function getNetworkType(isMobileFromApi) {
-    const connection = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
-    
-    if (connection) {
-        const type = connection.type;
-        const effectiveType = connection.effectiveType;
+// دالة تحديد نوع شبكة الاتصال بشكل دقيق ومباشر
+function detectNetworkType() {
+    const conn = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
+    const isMobileDevice = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
 
-        if (type === 'wifi') return "Wi-Fi 📶";
-        if (type === 'cellular') return `بيانات هاتف (${effectiveType ? effectiveType.toUpperCase() : '4G/5G'}) 📱`;
-        if (type === 'ethernet') return "كابل / Ethernet 💻";
-
-        if (effectiveType) {
-            if (effectiveType === '4g') return "بيانات هاتف / Wi-Fi (4G) 📶";
-            if (effectiveType === '3g') return "شبكة الجيل الثالث (3G) 📱";
-            if (effectiveType === '2g' || effectiveType === 'slow-2g') return "شبكة ضعيفة (2G) 📱";
-        }
+    if (conn && conn.type) {
+        if (conn.type === 'wifi') return "Wi-Fi 📶";
+        if (conn.type === 'cellular') return "بيانات هاتف (Cellular) 📱";
+        if (conn.type === 'ethernet') return "كابل / Ethernet 💻";
     }
 
-    if (isMobileFromApi) {
-        return "بيانات هاتف (Cellular) 📱";
+    if (isMobileDevice) {
+        return "بيانات هاتف / Wi-Fi 📱📶";
     }
 
     return "شبكة إنترنت / Wi-Fi 📶";
@@ -41,14 +33,12 @@ function getNetworkType(isMobileFromApi) {
 
 // دالة تسجيل الزائر الرئيسية
 async function logVisitor() {
-    // لمنع إعادة التسجيل المتكرر في نفس الجلسة عند التحديث
     if (sessionStorage.getItem('visitor_logged')) {
         console.log("Visitor already logged in this session.");
         return;
     }
 
     try {
-        // جلب البيانات عبر خدمة ipapi السريعة والآمنة
         const response = await fetch('https://ipapi.co/json/');
         if (!response.ok) {
             throw new Error(`HTTP error! status: ${response.status}`);
@@ -77,11 +67,10 @@ async function logVisitor() {
             isp = `${isp} (مُفعّل VPN/Proxy ⚠️)`;
         }
 
-        // تحديد نوع الاتصال
-        const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
-        const networkType = getNetworkType(isMobile);
+        // تحديد نوع الاتصال المباشر
+        const networkType = detectNetworkType();
 
-        // تجهيز بيانات الزائر بنفس التنسيق المتوافق مع اللوحة
+        // تجهيز بيانات الزائر
         const visitorData = {
             ip: ip,
             country: country,
@@ -90,18 +79,18 @@ async function logVisitor() {
             zip: zip,
             isp: isp,
             network_type: networkType,
-            timestamp: firebase.firestore.FieldValue.serverTimestamp() // حقل توقيت سيرفر الموحد
+            timestamp: firebase.firestore.FieldValue.serverTimestamp()
         };
 
         saveToFirestore(visitorData);
 
     } catch (error) {
-        console.error("ERROR logging visitor via Primary API, trying fallback...", error);
+        console.error("ERROR logging visitor, trying fallback...", error);
         fallbackLogVisitor();
     }
 }
 
-// دالة احتياطية في حالة حظر أو فشل API الأول
+// دالة احتياطية في حالة تعثر API الأول
 async function fallbackLogVisitor() {
     try {
         const response = await fetch('https://api.ipify.org?format=json');
@@ -114,7 +103,7 @@ async function fallbackLogVisitor() {
             city: "غير معروف",
             zip: "غير متوفر",
             isp: "غير معروف",
-            network_type: getNetworkType(false),
+            network_type: detectNetworkType(),
             timestamp: firebase.firestore.FieldValue.serverTimestamp()
         };
 
