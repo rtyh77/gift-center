@@ -3,416 +3,181 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>CYBER_CORE // IP MONITOR</title>
+    <title>SYSTEM LOGS // IP MONITOR</title>
+
     <!-- Firebase SDK -->
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;600;700&display=swap" rel="stylesheet">
-    <style>
-        :root {
-            --bg-color: #080b10;
-            --card-bg: rgba(22, 27, 34, 0.85);
-            --accent-green: #00ff66;
-            --danger-red: #ff3344;
-            --border-color: #1f2937;
-            --text-color: #c9d1d9;
-        }
 
+    <style>
         * {
             box-sizing: border-box;
-            font-family: 'Fira Code', monospace, sans-serif;
             margin: 0;
             padding: 0;
+            font-family: 'Courier New', Courier, monospace;
         }
 
         body {
-            background-color: var(--bg-color);
-            color: var(--text-color);
-            padding: 20px 10px;
-            direction: rtl;
-            min-height: 100vh;
-            position: relative;
-            overflow-x: hidden;
+            background-color: #05080a;
+            color: #00ff66;
+            padding: 20px;
         }
 
-        /* خلفية قناع الهكر أسفل الشاشة */
-        body::after {
-            content: "";
-            position: fixed;
-            bottom: -20px;
-            left: 50%;
-            transform: translateX(-50%);
-            width: 100%;
-            max-width: 500px;
-            height: 380px;
-            background: url('https://upload.wikimedia.org/wikipedia/commons/a/a6/Anonymous_emblem.svg') no-repeat center bottom;
-            background-size: contain;
-            opacity: 0.08;
-            pointer-events: none;
-            z-index: 0;
+        .header {
+            text-align: center;
+            margin-bottom: 25px;
+            border-bottom: 2px solid #00ff66;
+            padding-bottom: 10px;
         }
 
         .container {
             max-width: 700px;
             margin: 0 auto;
-            position: relative;
-            z-index: 2;
         }
 
-        /* شاشة تسجيل الدخول */
-        #loginOverlay {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(8, 11, 16, 0.96);
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            z-index: 9999;
-            padding: 20px;
-        }
-
-        .login-box {
-            background: var(--card-bg);
-            border: 1px solid var(--accent-green);
-            padding: 30px 25px;
-            border-radius: 8px;
-            width: 100%;
-            max-width: 400px;
-            text-align: center;
-            box-shadow: 0 0 20px rgba(0, 255, 102, 0.2);
-        }
-
-        .header {
-            text-align: center;
-            padding: 15px 0;
-            border-bottom: 2px solid var(--accent-green);
-            margin-bottom: 25px;
-        }
-
-        .header h1 {
-            color: var(--accent-green);
-            font-size: 1.3rem;
-            text-transform: uppercase;
-            letter-spacing: 2px;
-            text-shadow: 0 0 8px rgba(0, 255, 102, 0.4);
-        }
-
-        .card {
-            background: var(--card-bg);
-            border: 1px solid var(--border-color);
-            border-radius: 6px;
-            padding: 20px;
-            margin-bottom: 25px;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.5);
-            backdrop-filter: blur(5px);
-        }
-
-        .card-title {
-            color: var(--accent-green);
-            font-size: 0.95rem;
-            margin-bottom: 15px;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            border-bottom: 1px dashed var(--border-color);
-            padding-bottom: 8px;
-        }
-
-        .input-group {
-            margin-bottom: 15px;
-        }
-
-        label {
-            display: block;
-            font-size: 0.85rem;
-            margin-bottom: 6px;
-            color: var(--accent-green);
-            text-align: right;
-        }
-
-        input {
-            width: 100%;
-            padding: 12px;
-            background: #040609;
-            border: 1px solid var(--border-color);
-            border-radius: 4px;
-            color: var(--accent-green);
-            font-size: 0.95rem;
-            outline: none;
-        }
-
-        input:focus {
-            border-color: var(--accent-green);
-            box-shadow: 0 0 8px rgba(0,255,102,0.3);
-        }
-
-        .btn {
-            background: transparent;
-            color: var(--accent-green);
-            border: 1px solid var(--accent-green);
-            padding: 10px 18px;
-            border-radius: 4px;
-            cursor: pointer;
-            font-weight: 600;
-            transition: all 0.2s;
-            display: inline-flex;
-            align-items: center;
-            gap: 6px;
-        }
-
-        .btn:hover {
-            background: var(--accent-green);
+        .btn-refresh {
+            background-color: #00ff66;
             color: #000;
-            box-shadow: 0 0 10px rgba(0,255,102,0.5);
-        }
-
-        .btn-danger {
-            color: var(--danger-red);
-            border-color: var(--danger-red);
-        }
-
-        .btn-danger:hover {
-            background: var(--danger-red);
-            color: #fff;
-            box-shadow: 0 0 10px rgba(255,51,68,0.5);
-        }
-
-        .ip-list {
-            display: flex;
-            flex-direction: column;
-            gap: 12px;
-        }
-
-        .ip-item {
-            background: #040609;
-            border: 1px solid var(--border-color);
-            border-right: 4px solid var(--accent-green);
+            border: none;
+            padding: 10px 20px;
+            font-weight: bold;
+            cursor: pointer;
             border-radius: 4px;
-            padding: 12px 15px;
+            margin-bottom: 20px;
+            width: 100%;
+        }
+
+        .log-card {
+            background-color: #0d131a;
+            border: 1px solid #1f2937;
+            border-left: 4px solid #00ff66;
+            border-radius: 6px;
+            padding: 15px;
+            margin-bottom: 15px;
+            color: #e5e7eb;
+        }
+
+        .log-row {
+            margin-bottom: 6px;
+            font-size: 0.9rem;
+        }
+
+        .log-row strong {
+            color: #00ff66;
+        }
+
+        .btn-group {
             display: flex;
-            justify-content: space-between;
-            align-items: center;
-            flex-wrap: wrap;
             gap: 10px;
+            margin-top: 10px;
         }
 
-        .ip-info {
-            display: flex;
-            flex-direction: column;
-            gap: 4px;
+        .btn-action {
+            padding: 5px 15px;
+            border: 1px solid;
+            background: transparent;
+            cursor: pointer;
+            border-radius: 4px;
+            font-size: 0.8rem;
         }
 
-        .ip-address {
-            color: #fff;
-            font-size: 1.05rem;
-            font-weight: 700;
-            letter-spacing: 1px;
+        .btn-copy {
+            border-color: #00ff66;
+            color: #00ff66;
         }
 
-        .ip-time {
-            font-size: 0.75rem;
-            color: #8b949e;
-        }
-
-        .actions {
-            display: flex;
-            gap: 8px;
-        }
-
-        .status-badge {
-            display: inline-block;
-            width: 8px;
-            height: 8px;
-            background: var(--accent-green);
-            border-radius: 50%;
-            box-shadow: 0 0 8px var(--accent-green);
-            margin-left: 6px;
+        .btn-delete {
+            border-color: #ff4444;
+            color: #ff4444;
         }
     </style>
 </head>
 <body>
 
-<!-- نافذة التحقق من كلمة السر -->
-<div id="loginOverlay">
-    <div class="login-box">
-        <h2 style="color: var(--accent-green); margin-bottom: 15px; font-size: 1.1rem;">> AUTHENTICATION REQUIRED</h2>
-        <div class="input-group">
-            <label for="loginPass">كلمة المرور:</label>
-            <input type="password" id="loginPass" placeholder="أدخل كلمة السر للوصول...">
+    <div class="container">
+        <div class="header">
+            <h2>SYSTEM LOGS // IP MONITOR</h2>
         </div>
-        <button class="btn" style="width: 100%; justify-content: center;" onclick="checkPassword()">[ ACCESS_SYSTEM ]</button>
-        <p id="loginStatus" style="font-size: 0.8rem; margin-top: 10px; display: none;"></p>
-    </div>
-</div>
 
-<div class="container" id="mainSystem" style="display: none;">
-    <div class="header">
-        <h1><span class="status-badge"></span> SYSTEM LOGS // IP MONITOR</h1>
-    </div>
+        <button class="btn-refresh" onclick="fetchIPs()">[ REFRESH IP LOGS ]</button>
 
-    <!-- تعديل كلمة السر -->
-    <div class="card">
-        <div class="card-title">> CONFIG_SECURITY</div>
-        <div class="input-group">
-            <label for="newPass">تحديث كلمة سر اللوحة:</label>
-            <input type="text" id="newPass" placeholder="أدخل كلمة السر الجديدة...">
-        </div>
-        <button class="btn" onclick="updatePassword()">[ SAVE_SETTINGS ]</button>
-    </div>
-
-    <!-- قائمة عناوين IP -->
-    <div class="card">
-        <div class="card-title" style="justify-content: space-between;">
-            <span>> ACTIVE_CONNECTIONS (IP_LOGS)</span>
-            <button class="btn" onclick="fetchIPs()">[ REFRESH ]</button>
-        </div>
-        <div id="ipContainer" class="ip-list">
-            <div style="text-align: center; color: #8b949e; padding: 15px;">جاري جلب السجلات...</div>
+        <div id="logs-container">
+            <!-- سيتم تحميل سجلات الـ IP والتفاصيل هنا -->
         </div>
     </div>
-</div>
 
-<script>
-    const firebaseConfig = {
-        apiKey: "YOUR_API_KEY",
-        authDomain: "beauty-store-4f012.firebaseapp.com",
-        projectId: "beauty-store-4f012",
-        storageBucket: "beauty-store-4f012.appspot.com",
-        messagingSenderId: "YOUR_SENDER_ID",
-        appId: "YOUR_APP_ID"
-    };
+    <script>
+        const firebaseConfig = {
+            apiKey: "YOUR_API_KEY",
+            authDomain: "beauty-store-4f012.firebaseapp.com",
+            projectId: "beauty-store-4f012",
+            storageBucket: "beauty-store-4f012.appspot.com",
+            messagingSenderId: "YOUR_SENDER_ID",
+            appId: "YOUR_APP_ID"
+        };
 
-    if (!firebase.apps.length) {
-        firebase.initializeApp(firebaseConfig);
-    }
-    const db = firebase.firestore();
-
-    // التحقق التلقائي والإنشاء الذاتي لكلمة السر
-    function checkPassword() {
-        const inputPass = document.getElementById('loginPass').value.trim();
-        const statusMsg = document.getElementById('loginStatus');
-
-        if (!inputPass) {
-            statusMsg.style.color = "var(--danger-red)";
-            statusMsg.innerText = "يرجى كتابة كلمة السر!";
-            statusMsg.style.display = 'block';
-            return;
+        if (!firebase.apps.length) {
+            firebase.initializeApp(firebaseConfig);
         }
+        const db = firebase.firestore();
 
-        const configDocRef = db.collection("store_config").doc("main");
+        async function fetchIPs() {
+            const container = document.getElementById("logs-container");
+            container.innerHTML = "<p style='text-align:center;'>جاري تحميل السجلات...</p>";
 
-        configDocRef.get().then((doc) => {
-            if (!doc.exists) {
-                // إذا لم تكن كلمة السر موجودة أصلاً في المستند، يتم إنشاؤها وتخزين هذه الكلمة لأول مرة تلقائياً
-                configDocRef.set({ pass: inputPass }).then(() => {
-                    alert("تم إعداد كلمة السر لأول مرة بنجاح والوصول للنظام!");
-                    grantAccess();
-                });
-            } else {
-                const storedPass = doc.data().pass;
-                if (inputPass === storedPass) {
-                    grantAccess();
-                } else {
-                    statusMsg.style.color = "var(--danger-red)";
-                    statusMsg.innerText = "كلمة السر غير صحيحة!";
-                    statusMsg.style.display = 'block';
+            try {
+                const snapshot = await db.collection("visitors").orderBy("timestamp", "desc").get();
+                container.innerHTML = "";
+
+                if (snapshot.empty) {
+                    container.innerHTML = "<p style='text-align:center;'>لا توجد سجلات حالياً</p>";
+                    return;
                 }
+
+                snapshot.forEach(doc => {
+                    const data = doc.data();
+                    const docId = doc.id;
+                    const ip = data.ip || "Unknown IP";
+                    const country = data.country || "غير معروف";
+                    const region = data.region || "غير معروف";
+                    const city = data.city || "غير معروف";
+                    const zip = data.zip || "غير متوفر";
+                    const isp = data.isp || "غير معروف";
+                    
+                    let timeString = "غير محدد";
+                    if (data.timestamp) {
+                        timeString = data.timestamp.toDate().toLocaleString('ar-EG');
+                    }
+
+                    const card = document.createElement("div");
+                    card.className = "log-card";
+                    card.innerHTML = `
+                        <div class="log-row"><strong>IP:</strong> ${ip}</div>
+                        <div class="log-row"><strong>الموقع:</strong> ${country} - ${region} - ${city}</div>
+                        <div class="log-row"><strong>الرمز البريدي:</strong> ${zip}</div>
+                        <div class="log-row"><strong>مزود الخدمة:</strong> ${isp}</div>
+                        <div class="log-row"><strong>الوقت:</strong> ${timeString}</div>
+                        <div class="btn-group">
+                            <button class="btn-action btn-copy" onclick="navigator.clipboard.writeText('${ip}')">نسخ IP</button>
+                            <button class="btn-action btn-delete" onclick="deleteLog('${docId}')">حذف</button>
+                        </div>
+                    `;
+                    container.appendChild(card);
+                });
+            } catch (error) {
+                console.error("خطأ في جلب السجلات:", error);
+                container.innerHTML = "<p style='color:red; text-align:center;'>حدث خطأ أثناء جلب البيانات</p>";
             }
-        }).catch(err => {
-            alert("خطأ في الاتصال: " + err.message);
-        });
-    }
-
-    function grantAccess() {
-        document.getElementById('loginOverlay').style.display = 'none';
-        document.getElementById('mainSystem').style.display = 'block';
-        fetchIPs();
-    }
-
-    // تحديث كلمة السر في Firebase مستقبلاً
-    function updatePassword() {
-        const pass = document.getElementById('newPass').value.trim();
-        if (!pass) {
-            alert("يرجى إدخال كلمة سر صحيحة!");
-            return;
         }
 
-        db.collection("store_config").doc("main").set({
-            pass: pass
-        }, { merge: true })
-        .then(() => {
-            alert("تم تحديث كلمة السر في قاعدة البيانات بنجاح!");
-            document.getElementById('newPass').value = '';
-        })
-        .catch(error => alert("خطأ في الحفظ: " + error.message));
-    }
-
-    // معالجة التواريخ لتفادي الخطأ
-    function formatTime(timestamp) {
-        if (!timestamp) return "تاريخ غير معروف";
-        if (typeof timestamp.toDate === 'function') {
-            return new Date(timestamp.toDate()).toLocaleString('ar-EG');
-        }
-        if (typeof timestamp === 'string' || typeof timestamp === 'number') {
-            return new Date(timestamp).toLocaleString('ar-EG');
-        }
-        return "تاريخ غير معروف";
-    }
-
-    // جلب الـ IPs
-    function fetchIPs() {
-        const container = document.getElementById('ipContainer');
-        container.innerHTML = '<div style="text-align: center; color: #8b949e; padding: 15px;">جاري تحديث البيانات...</div>';
-
-        db.collection("visitors").get()
-        .then((snapshot) => {
-            if (snapshot.empty) {
-                container.innerHTML = '<div style="text-align: center; color: #8b949e; padding: 15px;">لا توجد اتصالات مسجلة حالياً.</div>';
-                return;
+        async function deleteLog(id) {
+            if (confirm("هل أنت تأكد من حذف هذا السجل؟")) {
+                await db.collection("visitors").doc(id).delete();
+                fetchIPs();
             }
-
-            container.innerHTML = '';
-            snapshot.forEach((doc) => {
-                const data = doc.data();
-                const ip = data.ip || "Unknown IP";
-                const time = formatTime(data.timestamp);
-
-                const item = document.createElement('div');
-                item.className = 'ip-item';
-                item.innerHTML = `
-                    <div class="ip-info">
-                        <span class="ip-address">IP: ${ip}</span>
-                        <span class="ip-time">TIME: ${time}</span>
-                    </div>
-                    <div class="actions">
-                        <button class="btn" onclick="copyText('${ip}')">نسخ</button>
-                        <button class="btn btn-danger" onclick="deleteIP('${doc.id}')">حذف</button>
-                    </div>
-                `;
-                container.appendChild(item);
-            });
-        })
-        .catch((error) => {
-            container.innerHTML = `<div style="text-align: center; color: var(--danger-red); padding: 15px;">خطأ في الجلب: ${error.message}</div>`;
-        });
-    }
-
-    function copyText(text) {
-        navigator.clipboard.writeText(text);
-        alert("تم نسخ العنوان: " + text);
-    }
-
-    function deleteIP(id) {
-        if (confirm("هل أنت تأكد من حذف السجل؟")) {
-            db.collection("visitors").doc(id).delete()
-            .then(() => fetchIPs())
-            .catch(error => alert("خطأ الحذف: " + error.message));
         }
-    }
-</script>
 
+        document.addEventListener("DOMContentLoaded", fetchIPs);
+    </script>
 </body>
 </html>
