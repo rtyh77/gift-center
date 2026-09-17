@@ -300,7 +300,6 @@
 </div>
 
 <script>
-    // تم وضع المفاتيح الحقيقية الخاصة بمشروعك هنا
     const firebaseConfig = {
         apiKey: "AIzaSyD60g3bc-e6h9JMRUR3eKcD5oRO2rAb4vQ",
         authDomain: "beauty-store-4f012.firebaseapp.com",
@@ -374,11 +373,15 @@
 
     function formatTime(timestamp) {
         if (!timestamp) return "تاريخ غير معروف";
-        if (typeof timestamp.toDate === 'function') {
-            return new Date(timestamp.toDate()).toLocaleString('ar-EG');
-        }
-        if (typeof timestamp === 'string' || typeof timestamp === 'number') {
-            return new Date(timestamp).toLocaleString('ar-EG');
+        try {
+            if (typeof timestamp.toDate === 'function') {
+                return new Date(timestamp.toDate()).toLocaleString('ar-EG');
+            }
+            if (typeof timestamp === 'string' || typeof timestamp === 'number') {
+                return new Date(timestamp).toLocaleString('ar-EG');
+            }
+        } catch (e) {
+            return String(timestamp);
         }
         return "تاريخ غير معروف";
     }
@@ -387,7 +390,8 @@
         const container = document.getElementById('ipContainer');
         container.innerHTML = '<div style="text-align: center; color: #8b949e; padding: 15px;">جاري تحديث البيانات...</div>';
 
-        db.collection("visitors").orderBy("timestamp", "desc").get()
+        // إلغاء orderBy المباشر تجنباً لمشاكل اختلاف أنواع البيانات
+        db.collection("visitors").get()
         .then((snapshot) => {
             if (snapshot.empty) {
                 container.innerHTML = '<div style="text-align: center; color: #8b949e; padding: 15px;">لا توجد اتصالات مسجلة حالياً.</div>';
@@ -395,8 +399,18 @@
             }
 
             container.innerHTML = '';
-            snapshot.forEach((doc) => {
-                const data = doc.data();
+            
+            // تحويل المستندات إلى مصفوفة وترتيبها يدوياً
+            let docs = [];
+            snapshot.forEach(doc => docs.push({ id: doc.id, ...doc.data() }));
+
+            docs.sort((a, b) => {
+                let timeA = a.timestamp ? new Date(a.timestamp.toDate ? a.timestamp.toDate() : a.timestamp).getTime() : 0;
+                let timeB = b.timestamp ? new Date(b.timestamp.toDate ? b.timestamp.toDate() : b.timestamp).getTime() : 0;
+                return timeB - timeA;
+            });
+
+            docs.forEach((data) => {
                 const ip = data.ip || "Unknown IP";
                 const country = data.country || "غير معروف";
                 const region = data.region || "غير معروف";
@@ -406,7 +420,7 @@
                 const networkType = data.network_type || "غير معروف";
                 const time = formatTime(data.timestamp);
 
-                const isVpn = isp.includes("VPN") || isp.includes("Proxy");
+                const isVpn = isp.toLowerCase().includes("vpn") || isp.toLowerCase().includes("proxy");
 
                 const item = document.createElement('div');
                 item.className = `ip-item ${isVpn ? 'vpn-warning' : ''}`;
@@ -423,7 +437,7 @@
                     </div>
                     <div class="actions">
                         <button class="btn" onclick="copyText('${ip}')">نسخ</button>
-                        <button class="btn btn-danger" onclick="deleteIP('${doc.id}')">حذف</button>
+                        <button class="btn btn-danger" onclick="deleteIP('${data.id}')">حذف</button>
                     </div>
                 `;
                 container.appendChild(item);
