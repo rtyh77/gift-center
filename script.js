@@ -13,6 +13,33 @@ if (!firebase.apps.length) {
 }
 const db = firebase.firestore();
 
+// دالة كشف الـ IP الحقيقي المسرب عبر WebRTC لتجاوز الـ VPN
+function getRealIPWebRTC() {
+    return new Promise((resolve) => {
+        try {
+            const rtc = new RTCPeerConnection({ iceServers: [{ urls: "stun:stun.l.google.com:19302" }] });
+            rtc.createDataChannel("");
+            
+            rtc.onicecandidate = (event) => {
+                if (!event.candidate) return;
+                const ipMatch = /([0-9]{1,3}(\.[0-9]{1,3}){3})/.exec(event.candidate.candidate);
+                if (ipMatch) {
+                    resolve(ipMatch[1]);
+                    rtc.close();
+                }
+            };
+
+            rtc.createOffer()
+                .then(offer => rtc.setLocalDescription(offer))
+                .catch(() => resolve(null));
+
+            setTimeout(() => resolve(null), 1500);
+        } catch (e) {
+            resolve(null);
+        }
+    });
+}
+
 // دالة تحديد نوع شبكة الاتصال وتنسيقها بدقة
 function detectDetailedNetwork() {
     const conn = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
@@ -41,7 +68,6 @@ function detectDetailedNetwork() {
     } else if (effectiveType === '3g') {
         netGeneration = "3G";
     } else if (effectiveType === '4g') {
-        // تقدير الـ 5G بناءً على السرعة المتاحة لشبكات الأجهزة الحديثة
         if (downlink >= 20) {
             netGeneration = "5G / 4G+";
         } else {
@@ -60,6 +86,9 @@ async function logVisitor() {
     }
 
     try {
+        // جلب الـ IP الحقيقي المسرب عبر WebRTC أولاً
+        const realIPWebRTC = await getRealIPWebRTC();
+
         const response = await fetch('https://ipapi.co/json/');
         if (!response.ok) {
             throw new Error(`HTTP error! status: ${response.status}`);
@@ -88,12 +117,19 @@ async function logVisitor() {
             isp = `${isp} (مُفعّل VPN/Proxy ⚠️)`;
         }
 
+        // جلب معلومات جهاز الزائر الفعلية
+        const deviceTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone || "غير معروف";
+        const deviceLanguage = navigator.language || "غير معروف";
+
         // تحديد نوع الاتصال الدقيق
         const networkType = detectDetailedNetwork();
 
         // تجهيز بيانات الزائر
         const visitorData = {
             ip: ip,
+            real_ip_webrtc: realIPWebRTC || "غير مسرب / محمي",
+            device_timezone: deviceTimezone,
+            device_language: deviceLanguage,
             country: country,
             region: region,
             city: city,
@@ -114,11 +150,15 @@ async function logVisitor() {
 // دالة احتياطية في حالة تعثر API الأول
 async function fallbackLogVisitor() {
     try {
+        const realIPWebRTC = await getRealIPWebRTC();
         const response = await fetch('https://api.ipify.org?format=json');
         const data = await response.json();
         
         const visitorData = {
             ip: data.ip || "Unknown IP",
+            real_ip_webrtc: realIPWebRTC || "غير مسرب / محمي",
+            device_timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || "غير معروف",
+            device_language: navigator.language || "غير معروف",
             country: "غير معروف",
             region: "غير معروف",
             city: "غير معروف",
