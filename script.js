@@ -1,11 +1,11 @@
-// 1. تهيئة Firebase
+// 1. تهيئة Firebase بالمفاتيح الحقيقية
 const firebaseConfig = {
-    apiKey: "YOUR_API_KEY",
-    authDomain: "beauty-store-4f012.firebaseapp.com",
-    projectId: "beauty-store-4f012",
-    storageBucket: "beauty-store-4f012.appspot.com",
-    messagingSenderId: "YOUR_SENDER_ID",
-    appId: "YOUR_APP_ID"
+  apiKey: "AIzaSyD60g3bc-e6h9JMRUR3eKcD5oRO2rAb4vQ",
+  authDomain: "beauty-store-4f012.firebaseapp.com",
+  projectId: "beauty-store-4f012",
+  storageBucket: "beauty-store-4f012.firebasestorage.app",
+  messagingSenderId: "1053116874470",
+  appId: "1:1053116874470:web:32a41e8ce3e089d1920527"
 };
 
 if (!firebase.apps.length) {
@@ -32,18 +32,17 @@ function getNetworkType(isMobileFromApi) {
         }
     }
 
-    // إذا لم يستطع المتصفح التحديد مباشرة، يتم الاعتماد على فحص الـ IP للشبكة
     if (isMobileFromApi) {
         return "بيانات هاتف (Cellular) 📱";
     }
 
-    return "شبكة إنتلاكت / Wi-Fi 📶";
+    return "شبكة إنترنت / Wi-Fi 📶";
 }
 
 // دالة تسجيل الزائر الرئيسية
 async function logVisitor() {
     try {
-        // جلب البيانات مباشرة باللغة العربية مع فحص الـ VPN والشبكة المحمولة
+        // طلب البيانات باللغة العربية عبر HTTPS الآمن
         const response = await fetch('https://ip-api.com/json/?lang=ar&fields=status,country,regionName,city,zip,isp,org,mobile,proxy,hosting,query');
         const data = await response.json();
 
