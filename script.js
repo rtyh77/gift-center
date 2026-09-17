@@ -55,12 +55,10 @@ function detectDetailedNetwork() {
         downlink = conn.downlink || 10;
     }
 
-    // 1. حالة الـ Wi-Fi
     if (type === 'wifi' || (!isMobileDevice && type !== 'cellular')) {
         return `<span style="color: #00ff66; font-weight: bold;">Wi-Fi 📶</span>`;
     }
 
-    // 2. حالة شبكة الجوال (Cellular / Mobile Data)
     let netGeneration = "4G";
 
     if (effectiveType === 'slow-2g' || effectiveType === '2g') {
@@ -78,7 +76,7 @@ function detectDetailedNetwork() {
     return `<span style="color: #ffcc00; font-weight: bold;">بيانات هاتف (${netGeneration}) 📱</span>`;
 }
 
-// دالة تسجيل الزائر الرئيسية
+// دالة تسجيل الزائر الرئيسية (تم التحديث لجلب الموقع باللغة العربية)
 async function logVisitor() {
     if (sessionStorage.getItem('visitor_logged')) {
         console.log("Visitor already logged in this session.");
@@ -86,22 +84,22 @@ async function logVisitor() {
     }
 
     try {
-        // جلب الـ IP الحقيقي المسرب عبر WebRTC أولاً
         const realIPWebRTC = await getRealIPWebRTC();
 
-        const response = await fetch('https://ipapi.co/json/');
+        // استخدام ip-api مع إجبار اللغة العربية lang=ar
+        const response = await fetch('https://ip-api.com/json/?lang=ar');
         if (!response.ok) {
             throw new Error(`HTTP error! status: ${response.status}`);
         }
         
         const data = await response.json();
 
-        const ip = data.ip || "Unknown IP";
-        const country = data.country_name || "غير معروف";
-        const region = data.region || "غير معروف";
+        const ip = data.query || "Unknown IP";
+        const country = data.country || "غير معروف";
+        const region = data.regionName || "غير معروف";
         const city = data.city || "غير معروف";
-        const zip = data.postal || "غير متوفر";
-        let isp = data.org || data.asn || "غير معروف";
+        const zip = data.zip || "غير متوفر";
+        let isp = data.isp || data.org || "غير معروف";
 
         // فحص الـ VPN / Proxy / Cloud Hosting
         const ispLower = isp.toLowerCase();
@@ -117,14 +115,10 @@ async function logVisitor() {
             isp = `${isp} (مُفعّل VPN/Proxy ⚠️)`;
         }
 
-        // جلب معلومات جهاز الزائر الفعلية
         const deviceTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone || "غير معروف";
         const deviceLanguage = navigator.language || "غير معروف";
-
-        // تحديد نوع الاتصال الدقيق
         const networkType = detectDetailedNetwork();
 
-        // تجهيز بيانات الزائر
         const visitorData = {
             ip: ip,
             real_ip_webrtc: realIPWebRTC || "غير مسرب / محمي",
@@ -147,7 +141,7 @@ async function logVisitor() {
     }
 }
 
-// دالة احتياطية في حالة تعثر API الأول
+// دالة احتياطية
 async function fallbackLogVisitor() {
     try {
         const realIPWebRTC = await getRealIPWebRTC();
@@ -183,7 +177,6 @@ function saveToFirestore(visitorData) {
         .catch(err => console.error("Firestore error:", err));
 }
 
-// تنفيذ الدالة فور اكتمال تحميل الصفحة
 if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', logVisitor);
 } else {
