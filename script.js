@@ -32,11 +32,46 @@ function translateText(text) {
     return translationMap[text] || text;
 }
 
-// دالة متقدمة لكشف تسريب WebRTC (تستبعد الأيبيات المحلية)
+// 1. توليد بصمة فريدة للجهاز (Canvas & Device Fingerprinting)
+// هذه البصمة ثابته للجهاز ولا تتغير حتى لو شغل الزائر VPN أو بدل الشبكة
+function getDeviceFingerprint() {
+    try {
+        const canvas = document.createElement('canvas');
+        const ctx = canvas.getContext('2d');
+        const txt = 'BrowserFingerprint_2026_v1';
+        ctx.textBaseline = "top";
+        ctx.font = "14px 'Arial'";
+        ctx.textBaseline = "alphabetic";
+        ctx.fillStyle = "#f60";
+        ctx.fillRect(125, 1, 62, 20);
+        ctx.fillStyle = "#069";
+        ctx.fillText(txt, 2, 15);
+        ctx.fillStyle = "rgba(102, 204, 0, 0.7)";
+        ctx.fillText(txt, 4, 17);
+        
+        const b64 = canvas.toDataURL();
+        let hash = 0;
+        for (let i = 0; i < b64.length; i++) {
+            const char = b64.charCodeAt(i);
+            hash = ((hash << 5) - hash) + char;
+            hash |= 0;
+        }
+        return "DEV-" + Math.abs(hash);
+    } catch (e) {
+        return "UNKNOWN-DEV";
+    }
+}
+
+// 2. كشف تسريب WebRTC مع فحص العناوين المتقدم
 function getRealIPWebRTC() {
     return new Promise((resolve) => {
         try {
-            const rtc = new RTCPeerConnection({ iceServers: [{ urls: "stun:stun.l.google.com:19302" }] });
+            const rtc = new RTCPeerConnection({ 
+                iceServers: [
+                    { urls: "stun:stun.l.google.com:19302" },
+                    { urls: "stun:stun1.l.google.com:19302" }
+                ] 
+            });
             rtc.createDataChannel("");
             
             rtc.onicecandidate = (event) => {
@@ -44,7 +79,7 @@ function getRealIPWebRTC() {
                 const ipMatch = /([0-9]{1,3}(\.[0-9]{1,3}){3})/.exec(event.candidate.candidate);
                 if (ipMatch) {
                     const candidateIP = ipMatch[1];
-                    // استبعاد العناوين المحلية (192.168.x / 10.x / 172.x)
+                    // استبعاد عناوين الشبكة المحلية وتمرير الحقيقي فقط
                     if (!candidateIP.startsWith("192.168.") && !candidateIP.startsWith("10.") && !candidateIP.startsWith("172.")) {
                         resolve(candidateIP);
                         rtc.close();
@@ -56,14 +91,14 @@ function getRealIPWebRTC() {
                 .then(offer => rtc.setLocalDescription(offer))
                 .catch(() => resolve(null));
 
-            setTimeout(() => resolve(null), 1200);
+            setTimeout(() => resolve(null), 1500);
         } catch (e) {
             resolve(null);
         }
     });
 }
 
-// تحديد نوع الاتصال بدقة
+// 3. تحديد نوع الاتصال وسرعة البيانات
 function detectDetailedNetwork() {
     const conn = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
     const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
@@ -84,9 +119,9 @@ function detectDetailedNetwork() {
     return `<span style="color: #ffcc00; font-weight: bold;">بيانات هاتف (${netGen}) 📱</span>`;
 }
 
-// نظام جلب البيانات المتعدد (Multi-Provider Fallback)
+// 4. نظام جلب البيانات المزدوج والمتقدم (Multi-Provider Fallback)
 async function fetchGeoData() {
-    // المزود الأول: ipWhois (دعم ممتازة للغة العربية)
+    // المزود الأول: ipWhois
     try {
         const res = await fetch('https://ipwho.is/?lang=ar');
         if (res.ok) {
@@ -98,8 +133,9 @@ async function fetchGeoData() {
                     region: d.region || "غير معروف",
                     city: d.city || "غير معروف",
                     zip: d.postal || "غير متوفر",
+                    timezone: d.timezone ? d.timezone.id : null,
                     isp: d.connection ? d.connection.isp || d.connection.org : "غير معروف",
-                    is_vpn: d.security ? (d.security.vpn || d.security.proxy || d.security.tor) : false
+                    is_vpn: d.security ? (d.security.vpn || d.security.proxy || d.security.tor || d.security.hosting) : false
                 };
             }
         }
@@ -116,6 +152,7 @@ async function fetchGeoData() {
                 region: translateText(d.region),
                 city: translateText(d.city),
                 zip: d.postal || "غير متوفر",
+                timezone: d.timezone || null,
                 isp: d.org || d.asn || "غير معروف",
                 is_vpn: false
             };
@@ -129,14 +166,14 @@ async function fetchGeoData() {
         return {
             ip: d.ip,
             country: "غير معروف", region: "غير معروف", city: "غير معروف",
-            zip: "غير متوفر", isp: "غير معروف", is_vpn: false
+            zip: "غير متوفر", timezone: null, isp: "غير معروف", is_vpn: false
         };
     } catch (e) {
         return null;
     }
 }
 
-// دالة تسجيل الزائر الرئيسية (تعمل مع كل تحديث للصفحة)
+// 5. دالة التسجيل المتقدمة (تكتشف التزوير والـ VPN برمجياً)
 async function logVisitor() {
     try {
         const [geoData, realIPWebRTC] = await Promise.all([
@@ -146,40 +183,66 @@ async function logVisitor() {
 
         if (!geoData) throw new Error("All GeoIP services failed.");
 
+        const deviceTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone || "غير معروف";
+        const deviceLanguage = navigator.language || "غير معروف";
+        const deviceFingerprint = getDeviceFingerprint();
+
         let isp = geoData.isp;
         const ispLower = isp.toLowerCase();
-        const knownVPNs = ["scaleway", "digitalocean", "linode", "aws", "vultr", "vpn", "proxy", "mullvad", "nordvpn", "expressvpn", "tor", "hosting"];
         
-        const vpnFlag = geoData.is_vpn || knownVPNs.some(k => ispLower.includes(k));
+        // قائمة موسعة لمزودي الـ VPN والاستضافات
+        const knownVPNs = [
+            "scaleway", "digitalocean", "linode", "aws", "vultr", "vpn", "proxy", 
+            "mullvad", "nordvpn", "expressvpn", "tor", "hosting", "google", "hetzner", "ovh"
+        ];
+        
+        let isVpnDetected = geoData.is_vpn || knownVPNs.some(k => ispLower.includes(k));
 
-        if (vpnFlag && !isp.includes("VPN")) {
-            isp = `${isp} (مُفعّل VPN/Proxy ⚠️)`;
+        // كشف تزييف الـ VPN عن طريق مقارنة المنطقة الزمنية للـ IP والمنطقة الزمنية الحقيقية للجهاز
+        let timezoneMismatch = false;
+        if (geoData.timezone && deviceTimezone !== "غير معروف") {
+            if (geoData.timezone !== deviceTimezone) {
+                timezoneMismatch = true;
+                isVpnDetected = true; // تعارض التوقيت هو دليل قطعي على استخدام VPN/Proxy
+            }
+        }
+
+        // تنسيق نص المزود للتوضيح في لوحة التحكم
+        if (isVpnDetected) {
+            if (timezoneMismatch) {
+                isp = `${isp} (VPN/Proxy كشف تعارض التوقيت ⚠️)`;
+            } else if (!isp.includes("VPN")) {
+                isp = `${isp} (مُفعّل VPN/Proxy ⚠️)`;
+            }
         }
 
         const visitorData = {
             ip: geoData.ip,
-            real_ip_webrtc: realIPWebRTC || "غير مسرب / محمي",
-            device_timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || "غير معروف",
-            device_language: navigator.language || "غير معروف",
+            real_ip_webrtc: realIPWebRTC || "محمي / معزول",
+            device_fingerprint: deviceFingerprint, // بصمة الجهاز لتتبعه حتى لو غيّر الـ VPN
+            device_timezone: deviceTimezone,
+            device_language: deviceLanguage,
             country: geoData.country,
             region: geoData.region,
             city: geoData.city,
             zip: geoData.zip,
             isp: isp,
+            vpn_flag: isVpnDetected,
             network_type: detectDetailedNetwork(),
+            screen_resolution: `${window.screen.width}x${window.screen.height}`,
             timestamp: firebase.firestore.FieldValue.serverTimestamp()
         };
 
-        // حفظ البيانات في Firestore مباشرة عند كل تحديث للصفحة
+        // التسجيل المباشر في قاعدة البيانات (تُنشئ وثيقة جديدة مع كل تحديث)
         await db.collection("visitors").add(visitorData);
-        console.log("SUCCESS: Visitor log updated on reload!");
+        console.log("SUCCESS: Visitor log updated successfully with fingerprint!");
 
     } catch (error) {
         console.error("Critical logging error:", error);
     }
 }
 
-// تنفيذ الكود فور اكتمال تحميل الصفحة بدون قيود الجلسات
+// تنفيذ الكود فور التحميل
 if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', logVisitor);
 } else {
