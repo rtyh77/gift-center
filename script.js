@@ -1,18 +1,12 @@
-// ============================================================
-// Visitor Analytics PRO - script.js
-// ============================================================
-// الإصدار المطور
-// - Multi-source IP / GeoIP
-// - Browser / Device intelligence
-// - Network measurements
-// - VPN / Proxy / Hosting indicators
-// - Cloudflare Worker ready
-// ============================================================
+/* =========================================================
+   Visitor Analytics - Gift Center
+   Firebase Firestore + Multi-source IP/Geo information
+   Compatible with the current admin.html
+   ========================================================= */
 
-
-// ============================================================
-// 1. Firebase
-// ============================================================
+/* =========================
+   1) Firebase Configuration
+   ========================= */
 
 const firebaseConfig = {
   apiKey: "AIzaSyD60g3bc-e6h9JMRUR3eKcD5oRO2rAb4vQ",
@@ -30,42 +24,42 @@ if (!firebase.apps.length) {
 const db = firebase.firestore();
 
 
-// ============================================================
-// 2. إعدادات النظام
-// ============================================================
+/* =========================
+   2) Settings
+   ========================= */
 
-// اتركه فارغًا الآن.
-// في المرحلة القادمة سنضع هنا رابط Cloudflare Worker.
-// مثال:
-// const NETWORK_WORKER_URL = "https://your-worker.workers.dev";
-//
 const NETWORK_WORKER_URL = "";
 
+// مهلة طلبات GeoIP حتى لا يتوقف حفظ الزائر
+const API_TIMEOUT = 5000;
 
-// ============================================================
-// 3. أدوات مساعدة
-// ============================================================
 
-function safeValue(value, fallback = "غير معروف") {
-  return (
-    value !== undefined &&
-    value !== null &&
-    value !== ""
-  )
-    ? value
-    : fallback;
+/* =========================
+   3) General Helpers
+   ========================= */
+
+function safeValue(value, fallback = "غير متوفر") {
+  if (
+    value === undefined ||
+    value === null ||
+    value === "" ||
+    value === "null" ||
+    value === "undefined"
+  ) {
+    return fallback;
+  }
+
+  return value;
 }
 
 
 function cleanString(value) {
-  if (
-    value === undefined ||
-    value === null
-  ) {
-    return "";
-  }
+  if (value === undefined || value === null) return "";
 
-  return String(value).trim();
+  return String(value)
+    .trim()
+    .replace(/\s+/g, " ")
+    .substring(0, 500);
 }
 
 
@@ -79,103 +73,105 @@ function isValidIP(ip) {
     /^(25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)(\.(25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)){3}$/;
 
   // IPv6
-  const ipv6 =
-    /^[0-9a-fA-F:]{2,45}$/;
+  const ipv6 = /^[0-9a-fA-F:]+$/;
 
-  return ipv4.test(value) || ipv6.test(value);
+  return ipv4.test(value) || (value.includes(":") && ipv6.test(value));
 }
 
 
 function normalizeBoolean(value) {
-  if (typeof value === "boolean") {
-    return value;
-  }
+  if (value === true || value === false) return value;
 
-  if (
-    value === "true" ||
-    value === "1" ||
-    value === 1
-  ) {
-    return true;
-  }
-
-  if (
-    value === "false" ||
-    value === "0" ||
-    value === 0
-  ) {
-    return false;
-  }
+  if (value === "true") return true;
+  if (value === "false") return false;
 
   return null;
 }
 
 
-// ============================================================
-// 4. معلومات الجهاز والمتصفح
-// ============================================================
+/* =========================
+   4) Fetch With Timeout
+   ========================= */
+
+async function fetchWithTimeout(url, options = {}, timeout = API_TIMEOUT) {
+  const controller = new AbortController();
+
+  const timer = setTimeout(() => {
+    controller.abort();
+  }, timeout);
+
+  try {
+    const response = await fetch(url, {
+      ...options,
+      signal: controller.signal
+    });
+
+    return response;
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+
+async function fetchJSON(url, options = {}, timeout = API_TIMEOUT) {
+  const response = await fetchWithTimeout(url, options, timeout);
+
+  if (!response.ok) {
+    throw new Error(`HTTP ${response.status}`);
+  }
+
+  return await response.json();
+}
+
+
+/* =========================
+   5) Device Information
+   ========================= */
 
 function getDeviceInfo() {
-
-  const ua =
-    navigator.userAgent || "";
+  const ua = navigator.userAgent || "";
+  const platform = navigator.platform || "";
+  const vendor = navigator.vendor || "";
 
   let deviceType = "Desktop";
 
-  if (
-    /tablet|ipad|playbook|silk/i.test(ua)
-  ) {
+  if (/tablet|ipad/i.test(ua)) {
     deviceType = "Tablet";
-
   } else if (
     /mobile|android|iphone|ipod|windows phone/i.test(ua)
   ) {
     deviceType = "Mobile";
   }
 
-
-  let os = "غير معروف";
+  let osName = "غير متوفر";
   let osVersion = "";
 
-
   // Android
-  if (/Android/i.test(ua)) {
+  let match = ua.match(/Android\s([0-9.]+)/i);
 
-    const match =
-      ua.match(/Android\s([0-9.]+)/i);
-
-    os = "Android";
-
-    if (match) {
-      osVersion = match[1];
-    }
-
+  if (match) {
+    osName = "Android";
+    osVersion = match[1];
   }
 
-  // iOS
-  else if (/iPhone|iPad|iPod/i.test(ua)) {
+  // iPhone / iPad
+  if (/iPhone|iPad|iPod/i.test(ua)) {
+    osName = "iOS";
 
-    const match =
-      ua.match(/OS\s([0-9_]+)/i);
+    const iosMatch = ua.match(/OS\s([0-9_]+)/i);
 
-    os = "iOS";
-
-    if (match) {
-      osVersion =
-        match[1].replace(/_/g, ".");
+    if (iosMatch) {
+      osVersion = iosMatch[1].replace(/_/g, ".");
     }
-
   }
 
   // Windows
-  else if (/Windows NT/i.test(ua)) {
+  if (/Windows NT/i.test(ua)) {
+    osName = "Windows";
 
-    os = "Windows";
+    const win = ua.match(/Windows NT\s([0-9.]+)/i);
 
-    const match =
-      ua.match(/Windows NT\s([0-9.]+)/i);
-
-    if (match) {
+    if (win) {
       const versions = {
         "10.0": "10/11",
         "6.4": "10",
@@ -184,1408 +180,1179 @@ function getDeviceInfo() {
         "6.1": "7"
       };
 
-      osVersion =
-        versions[match[1]] ||
-        match[1];
+      osVersion = versions[win[1]] || win[1];
     }
-
   }
 
   // macOS
-  else if (/Mac OS X/i.test(ua)) {
+  if (/Mac OS X/i.test(ua) && !/iPhone|iPad|iPod/i.test(ua)) {
+    osName = "macOS";
 
-    os = "macOS";
+    const mac = ua.match(/Mac OS X\s?([0-9_\.]+)/i);
 
-    const match =
-      ua.match(/Mac OS X\s?([0-9_\.]+)/i);
-
-    if (match) {
-      osVersion =
-        match[1].replace(/_/g, ".");
+    if (mac) {
+      osVersion = mac[1].replace(/_/g, ".");
     }
-
   }
 
   // Linux
-  else if (/Linux/i.test(ua)) {
-    os = "Linux";
+  if (/Linux/i.test(ua) && !/Android/i.test(ua)) {
+    osName = "Linux";
   }
 
-
-  let browser = "غير معروف";
+  // Chrome
+  let browser = "غير متوفر";
   let browserVersion = "";
 
+  let chrome = ua.match(/Chrome\/([0-9.]+)/i);
 
-  if (/Edg\//i.test(ua)) {
-
-    browser = "Microsoft Edge";
-
-    const match =
-      ua.match(/Edg\/([0-9.]+)/i);
-
-    if (match) {
-      browserVersion = match[1];
-    }
-
+  if (chrome && !/Edg|OPR/i.test(ua)) {
+    browser = "Chrome";
+    browserVersion = chrome[1];
   }
 
-  else if (/OPR\//i.test(ua)) {
+  // Edge
+  let edge = ua.match(/Edg\/([0-9.]+)/i);
 
+  if (edge) {
+    browser = "Edge";
+    browserVersion = edge[1];
+  }
+
+  // Firefox
+  let firefox = ua.match(/Firefox\/([0-9.]+)/i);
+
+  if (firefox) {
+    browser = "Firefox";
+    browserVersion = firefox[1];
+  }
+
+  // Opera
+  let opera = ua.match(/OPR\/([0-9.]+)/i);
+
+  if (opera) {
     browser = "Opera";
-
-    const match =
-      ua.match(/OPR\/([0-9.]+)/i);
-
-    if (match) {
-      browserVersion = match[1];
-    }
-
+    browserVersion = opera[1];
   }
 
-  else if (
-    /Chrome\//i.test(ua) &&
-    !/Edg\//i.test(ua) &&
-    !/OPR\//i.test(ua)
+  // Samsung Browser
+  let samsung = ua.match(/SamsungBrowser\/([0-9.]+)/i);
+
+  if (samsung) {
+    browser = "Samsung Internet";
+    browserVersion = samsung[1];
+  }
+
+  // Safari
+  if (
+    /Safari/i.test(ua) &&
+    !/Chrome|CriOS|FxiOS|Edg|OPR|SamsungBrowser/i.test(ua)
   ) {
-
-    browser = "Google Chrome";
-
-    const match =
-      ua.match(/Chrome\/([0-9.]+)/i);
-
-    if (match) {
-      browserVersion = match[1];
-    }
-
-  }
-
-  else if (/Firefox\//i.test(ua)) {
-
-    browser = "Mozilla Firefox";
-
-    const match =
-      ua.match(/Firefox\/([0-9.]+)/i);
-
-    if (match) {
-      browserVersion = match[1];
-    }
-
-  }
-
-  else if (
-    /Safari\//i.test(ua) &&
-    !/Chrome\//i.test(ua)
-  ) {
-
     browser = "Safari";
 
-    const match =
-      ua.match(/Version\/([0-9.]+)/i);
+    const safari = ua.match(/Version\/([0-9.]+)/i);
 
-    if (match) {
-      browserVersion = match[1];
+    if (safari) {
+      browserVersion = safari[1];
     }
   }
-
 
   return {
     device_type: deviceType,
 
+    // الاسم الأساسي
     operating_system:
-      osVersion
-        ? `${os} ${osVersion}`
-        : os,
+      osVersion && osVersion !== "غير متوفر"
+        ? `${osName} ${osVersion}`
+        : osName,
 
-    operating_system_name:
-      os,
+    operating_system_name: osName,
+    operating_system_version: osVersion || "غير متوفر",
 
-    operating_system_version:
-      osVersion || "غير متوفر",
+    browser:
+      browserVersion && browserVersion !== "غير متوفر"
+        ? `${browser} ${browserVersion}`
+        : browser,
 
-    browser: browser,
+    browser_version: browserVersion || "غير متوفر",
 
-    browser_version:
-      browserVersion || "غير متوفر",
+    platform: platform || "غير متوفر",
+    vendor: vendor || "غير متوفر",
 
-    user_agent:
-      ua,
-
-    platform:
-      safeValue(
-        navigator.platform,
-        "غير متوفر"
-      ),
-
-    vendor:
-      safeValue(
-        navigator.vendor,
-        "غير متوفر"
-      )
+    user_agent: ua || "غير متوفر"
   };
 }
 
 
-// ============================================================
-// 5. User-Agent Client Hints
-// ============================================================
+/* =========================
+   6) User Agent Client Hints
+   ========================= */
 
 async function getUserAgentData() {
+  const result = {
+    user_agent_data_available: false,
+    ua_mobile: null,
+    ua_platform: "",
+    ua_platform_version: "",
+    ua_architecture: "",
+    ua_bitness: "",
+    ua_model: ""
+  };
 
   try {
-
     if (
-      !navigator.userAgentData
+      !navigator.userAgentData ||
+      typeof navigator.userAgentData.getHighEntropyValues !== "function"
     ) {
-      return {
-        available: false
-      };
+      return result;
     }
 
+    result.user_agent_data_available = true;
 
-    const uaData =
-      navigator.userAgentData;
+    result.ua_mobile =
+      normalizeBoolean(navigator.userAgentData.mobile);
 
+    result.ua_platform =
+      cleanString(navigator.userAgentData.platform);
 
-    let highEntropy = {};
+    const hints =
+      await navigator.userAgentData.getHighEntropyValues([
+        "platformVersion",
+        "architecture",
+        "bitness",
+        "model"
+      ]);
 
-    if (
-      typeof uaData.getHighEntropyValues ===
-      "function"
-    ) {
+    result.ua_platform_version =
+      cleanString(hints.platformVersion);
 
-      try {
+    result.ua_architecture =
+      cleanString(hints.architecture);
 
-        highEntropy =
-          await uaData.getHighEntropyValues([
-            "architecture",
-            "bitness",
-            "model",
-            "platform",
-            "platformVersion",
-            "uaFullVersion",
-            "fullVersionList",
-            "formFactors"
-          ]);
+    result.ua_bitness =
+      cleanString(hints.bitness);
 
-      } catch (e) {
-        console.warn(
-          "Client Hints unavailable:",
-          e
-        );
-      }
-    }
-
-
-    return {
-
-      available: true,
-
-      mobile:
-        uaData.mobile ?? null,
-
-      platform:
-        safeValue(
-          highEntropy.platform ||
-          uaData.platform,
-          "غير متوفر"
-        ),
-
-      platform_version:
-        safeValue(
-          highEntropy.platformVersion,
-          "غير متوفر"
-        ),
-
-      architecture:
-        safeValue(
-          highEntropy.architecture,
-          "غير متوفر"
-        ),
-
-      bitness:
-        safeValue(
-          highEntropy.bitness,
-          "غير متوفر"
-        ),
-
-      model:
-        safeValue(
-          highEntropy.model,
-          "غير متوفر"
-        ),
-
-      brands:
-        Array.isArray(uaData.brands)
-          ? uaData.brands
-              .map(
-                item =>
-                  `${item.brand} ${item.version}`
-              )
-              .join(" | ")
-          : "غير متوفر",
-
-      full_version_list:
-        Array.isArray(
-          highEntropy.fullVersionList
-        )
-          ? highEntropy.fullVersionList
-              .map(
-                item =>
-                  `${item.brand} ${item.version}`
-              )
-              .join(" | ")
-          : "غير متوفر",
-
-      form_factors:
-        Array.isArray(
-          highEntropy.formFactors
-        )
-          ? highEntropy.formFactors.join(", ")
-          : "غير متوفر"
-    };
+    result.ua_model =
+      cleanString(hints.model);
 
   } catch (error) {
-
-    return {
-      available: false
-    };
+    // Client Hints اختيارية وقد تكون محجوبة
   }
+
+  return result;
 }
 
 
-// ============================================================
-// 6. الشاشة والمتصفح
-// ============================================================
+/* =========================
+   7) Display Information
+   ========================= */
 
 function getDisplayInfo() {
+  const screenObj = window.screen || {};
 
-  const screenObject =
-    window.screen || {};
+  let orientation = "غير متوفر";
+  let orientationAngle = null;
 
+  try {
+    if (screenObj.orientation) {
+      orientation =
+        screenObj.orientation.type || "غير متوفر";
+
+      orientationAngle =
+        typeof screenObj.orientation.angle === "number"
+          ? screenObj.orientation.angle
+          : null;
+    } else {
+      orientation =
+        window.innerWidth > window.innerHeight
+          ? "landscape"
+          : "portrait";
+    }
+  } catch (e) {}
 
   return {
-
     screen_width:
-      screenObject.width || null,
+      Number.isFinite(screenObj.width)
+        ? screenObj.width
+        : null,
 
     screen_height:
-      screenObject.height || null,
+      Number.isFinite(screenObj.height)
+        ? screenObj.height
+        : null,
 
     screen_available_width:
-      screenObject.availWidth || null,
+      Number.isFinite(screenObj.availWidth)
+        ? screenObj.availWidth
+        : null,
 
     screen_available_height:
-      screenObject.availHeight || null,
+      Number.isFinite(screenObj.availHeight)
+        ? screenObj.availHeight
+        : null,
 
     viewport_width:
-      window.innerWidth || null,
+      Number.isFinite(window.innerWidth)
+        ? window.innerWidth
+        : null,
 
     viewport_height:
-      window.innerHeight || null,
+      Number.isFinite(window.innerHeight)
+        ? window.innerHeight
+        : null,
 
+    // الاسم الجديد
     pixel_ratio:
-      window.devicePixelRatio || null,
+      Number.isFinite(window.devicePixelRatio)
+        ? window.devicePixelRatio
+        : null,
+
+    // اسم متوافق مع بعض النسخ القديمة من admin
+    device_pixel_ratio:
+      Number.isFinite(window.devicePixelRatio)
+        ? window.devicePixelRatio
+        : null,
 
     color_depth:
-      screenObject.colorDepth || null,
+      Number.isFinite(screenObj.colorDepth)
+        ? screenObj.colorDepth
+        : null,
 
     pixel_depth:
-      screenObject.pixelDepth || null,
+      Number.isFinite(screenObj.pixelDepth)
+        ? screenObj.pixelDepth
+        : null,
 
-    orientation:
-      screenObject.orientation?.type ||
-      "غير متوفر",
-
-    orientation_angle:
-      screenObject.orientation?.angle ??
-      null
+    orientation,
+    orientation_angle: orientationAngle
   };
 }
 
 
-// ============================================================
-// 7. اللغة والمنطقة الزمنية
-// ============================================================
+/* =========================
+   8) Locale / Language
+   ========================= */
 
 function getLocaleInfo() {
-
-  let timezone =
-    "غير معروف";
-
-  let timezoneOffset =
-    null;
-
+  let timezone = "غير متوفر";
 
   try {
-
     timezone =
-      Intl.DateTimeFormat()
-        .resolvedOptions()
-        .timeZone ||
-      "غير معروف";
-
+      Intl.DateTimeFormat().resolvedOptions().timeZone ||
+      "غير متوفر";
   } catch (e) {}
 
+  let language = navigator.language || "";
+
+  let languages = [];
 
   try {
-
-    timezoneOffset =
-      new Date().getTimezoneOffset();
-
+    languages = Array.isArray(navigator.languages)
+      ? navigator.languages
+      : language
+        ? [language]
+        : [];
   } catch (e) {}
 
+  let offset = null;
+
+  try {
+    offset = new Date().getTimezoneOffset();
+  } catch (e) {}
 
   return {
-
-    device_timezone:
-      timezone,
+    device_timezone: timezone,
 
     device_language:
-      navigator.language ||
-      "غير معروف",
+      language || "غير متوفر",
 
     languages:
-      Array.isArray(
-        navigator.languages
-      )
-        ? navigator.languages.join(", ")
-        : safeValue(
-            navigator.language
-          ),
+      languages.length
+        ? languages.join(", ")
+        : "غير متوفر",
 
     timezone_offset_minutes:
-      timezoneOffset
-  };
-}
-
-
-// ============================================================
-// 8. معلومات الاتصال الأصلية من المتصفح
-// ============================================================
-
-function getNetworkInfo() {
-
-  const connection =
-    navigator.connection ||
-    navigator.mozConnection ||
-    navigator.webkitConnection;
-
-
-  if (!connection) {
-
-    return {
-
-      network_api_available: false,
-
-      network_type:
-        "غير متاح",
-
-      effective_network_type:
-        "غير متاح",
-
-      downlink_mbps:
-        null,
-
-      downlink_max_mbps:
-        null,
-
-      rtt_ms:
-        null,
-
-      save_data:
-        null
-    };
-  }
-
-
-  return {
-
-    network_api_available:
-      true,
-
-    network_type:
-      safeValue(
-        connection.type,
-        "غير معروف"
-      ),
-
-    effective_network_type:
-      safeValue(
-        connection.effectiveType,
-        "غير معروف"
-      ),
-
-    downlink_mbps:
-      typeof connection.downlink === "number"
-        ? connection.downlink
-        : null,
-
-    downlink_max_mbps:
-      typeof connection.downlinkMax === "number"
-        ? connection.downlinkMax
-        : null,
-
-    rtt_ms:
-      typeof connection.rtt === "number"
-        ? connection.rtt
-        : null,
-
-    save_data:
-      typeof connection.saveData === "boolean"
-        ? connection.saveData
+      typeof offset === "number"
+        ? offset
         : null
   };
 }
 
 
-// ============================================================
-// 9. قياس RTT فعلي
-// ============================================================
+/* =========================
+   9) Network API
+   ========================= */
 
-async function measureRealRTT() {
+function getNetworkInfo() {
+  const connection =
+    navigator.connection ||
+    navigator.mozConnection ||
+    navigator.webkitConnection ||
+    null;
 
-  try {
-
-    const start =
-      performance.now();
-
-
-    // طلب صغير إلى نفس الموقع.
-    // الهدف قياس زمن الوصول التقريبي من المتصفح
-    // وليس معرفة IP أو تجاوز VPN.
-
-    const url =
-      window.location.origin +
-      "/?__network_probe=" +
-      Date.now();
-
-
-    await fetch(
-      url,
-      {
-        method: "HEAD",
-        cache: "no-store",
-        credentials: "omit"
-      }
-    );
-
-
-    const end =
-      performance.now();
-
-
-    const rtt =
-      Math.round(end - start);
-
-
-    if (
-      Number.isFinite(rtt) &&
-      rtt >= 0
-    ) {
-      return rtt;
-    }
-
-  } catch (error) {
-
-    // بعض الاستضافات لا تدعم HEAD.
+  if (!connection) {
+    return {
+      network_api_available: false,
+      network_type: "غير مدعوم",
+      effective_network_type: "غير مدعوم",
+      effective_type: "غير مدعوم",
+      downlink_mbps: null,
+      downlink: null,
+      downlink_max_mbps: null,
+      rtt_ms: null,
+      rtt: null,
+      save_data: null
+    };
   }
 
+  const networkType =
+    cleanString(connection.type);
+
+  const effective =
+    cleanString(connection.effectiveType);
+
+  const downlink =
+    typeof connection.downlink === "number"
+      ? connection.downlink
+      : null;
+
+  const downlinkMax =
+    typeof connection.downlinkMax === "number"
+      ? connection.downlinkMax
+      : null;
+
+  const rtt =
+    typeof connection.rtt === "number"
+      ? connection.rtt
+      : null;
+
+  const saveData =
+    normalizeBoolean(connection.saveData);
+
+  return {
+    network_api_available: true,
+
+    network_type:
+      networkType || "غير متوفر",
+
+    effective_network_type:
+      effective || "غير متوفر",
+
+    // توافق admin.html الحالي
+    effective_type:
+      effective || "غير متوفر",
+
+    downlink_mbps: downlink,
+    downlink: downlink,
+
+    downlink_max_mbps: downlinkMax,
+
+    rtt_ms: rtt,
+    rtt: rtt,
+
+    save_data: saveData
+  };
+}
+
+
+/* =========================
+   10) Real Request RTT
+   ========================= */
+
+async function measureRealRTT() {
+  const url = window.location.origin + "/favicon.ico";
+
+  const start = performance.now();
+
+  try {
+    await fetchWithTimeout(
+      url + "?rtt=" + Date.now(),
+      {
+        method: "HEAD",
+        cache: "no-store"
+      },
+      3000
+    );
+
+    const elapsed =
+      Math.round(performance.now() - start);
+
+    return elapsed;
+  } catch (error) {
+    return null;
+  }
+}
+
+
+/* =========================
+   11) Hardware Information
+   ========================= */
+
+function getHardwareInfo() {
+  let cookiesEnabled = null;
+
+  try {
+    cookiesEnabled =
+      typeof navigator.cookieEnabled === "boolean"
+        ? navigator.cookieEnabled
+        : null;
+  } catch (e) {}
+
+  let dnt = null;
+
+  try {
+    dnt = navigator.doNotTrack || null;
+  } catch (e) {}
+
+  let gpc = null;
+
+  try {
+    gpc =
+      typeof navigator.globalPrivacyControl === "boolean"
+        ? navigator.globalPrivacyControl
+        : null;
+  } catch (e) {}
+
+  let online = null;
+
+  try {
+    online =
+      typeof navigator.onLine === "boolean"
+        ? navigator.onLine
+        : null;
+  } catch (e) {}
+
+  let pdfViewer = null;
+
+  try {
+    pdfViewer =
+      typeof navigator.pdfViewerEnabled === "boolean"
+        ? navigator.pdfViewerEnabled
+        : null;
+  } catch (e) {}
+
+  let webdriver = null;
+
+  try {
+    webdriver =
+      typeof navigator.webdriver === "boolean"
+        ? navigator.webdriver
+        : null;
+  } catch (e) {}
+
+  const cores =
+    typeof navigator.hardwareConcurrency === "number"
+      ? navigator.hardwareConcurrency
+      : null;
+
+  const memory =
+    typeof navigator.deviceMemory === "number"
+      ? navigator.deviceMemory
+      : null;
+
+  const touch =
+    typeof navigator.maxTouchPoints === "number"
+      ? navigator.maxTouchPoints
+      : null;
+
+  return {
+    hardware_concurrency: cores,
+
+    // القيمة قد تكون تقريبية ومقربة من المتصفح
+    device_memory_gb: memory,
+
+    // توافق admin.html
+    device_memory: memory,
+
+    max_touch_points: touch,
+
+    cookie_enabled: cookiesEnabled,
+
+    // توافق admin.html
+    cookies_enabled: cookiesEnabled,
+
+    do_not_track: dnt,
+
+    global_privacy_control: gpc,
+
+    online,
+
+    pdf_viewer_enabled: pdfViewer,
+
+    webdriver
+  };
+}
+
+
+/* =========================
+   12) Page Information
+   ========================= */
+
+function getPageInfo() {
+  return {
+    page_url:
+      window.location.href || "غير متوفر",
+
+    page_path:
+      window.location.pathname || "غير متوفر",
+
+    page_title:
+      document.title || "غير متوفر",
+
+    referrer:
+      document.referrer || "مباشر / غير متوفر",
+
+    origin:
+      window.location.origin || "غير متوفر"
+  };
+}
+
+
+/* =========================
+   13) Session ID
+   ========================= */
+
+function getSessionId() {
+  const key = "visitor_session_id";
+
+  try {
+    let sessionId =
+      sessionStorage.getItem(key);
+
+    if (sessionId) {
+      return sessionId;
+    }
+
+    sessionId =
+      "sess_" +
+      Date.now().toString(36) +
+      "_" +
+      Math.random()
+        .toString(36)
+        .substring(2, 10);
+
+    sessionStorage.setItem(
+      key,
+      sessionId
+    );
+
+    return sessionId;
+
+  } catch (error) {
+    return (
+      "sess_" +
+      Date.now().toString(36) +
+      "_" +
+      Math.random()
+        .toString(36)
+        .substring(2, 10)
+    );
+  }
+}
+
+
+/* =========================
+   14) IP API - ipapi.co
+   ========================= */
+
+async function fetchIPAPI() {
+  try {
+    const data =
+      await fetchJSON(
+        "https://ipapi.co/json/",
+        {},
+        API_TIMEOUT
+      );
+
+    const ip =
+      cleanString(data.ip);
+
+    return {
+      source: "ipapi.co",
+
+      ip:
+        isValidIP(ip)
+          ? ip
+          : "",
+
+      country:
+        cleanString(data.country_name),
+
+      country_code:
+        cleanString(data.country_code),
+
+      region:
+        cleanString(data.region),
+
+      city:
+        cleanString(data.city),
+
+      postal:
+        cleanString(data.postal),
+
+      latitude:
+        typeof data.latitude === "number"
+          ? data.latitude
+          : null,
+
+      longitude:
+        typeof data.longitude === "number"
+          ? data.longitude
+          : null,
+
+      timezone:
+        cleanString(data.timezone),
+
+      utc_offset:
+        cleanString(data.utc_offset),
+
+      asn:
+        cleanString(data.asn),
+
+      organization:
+        cleanString(data.org),
+
+      isp:
+        cleanString(data.org),
+
+      continent:
+        cleanString(data.continent_code),
+
+      currency:
+        cleanString(data.currency)
+    };
+
+  } catch (error) {
+    return null;
+  }
+}
+
+
+/* =========================
+   15) IP API - ipwho.is
+   ========================= */
+
+async function fetchIPWho() {
+  try {
+    const data =
+      await fetchJSON(
+        "https://ipwho.is/",
+        {},
+        API_TIMEOUT
+      );
+
+    if (data.success === false) {
+      return null;
+    }
+
+    const connection =
+      data.connection || {};
+
+    const ip =
+      cleanString(data.ip);
+
+    return {
+      source: "ipwho.is",
+
+      ip:
+        isValidIP(ip)
+          ? ip
+          : "",
+
+      country:
+        cleanString(data.country),
+
+      country_code:
+        cleanString(data.country_code),
+
+      region:
+        cleanString(data.region),
+
+      city:
+        cleanString(data.city),
+
+      postal:
+        cleanString(data.postal),
+
+      latitude:
+        typeof data.latitude === "number"
+          ? data.latitude
+          : null,
+
+      longitude:
+        typeof data.longitude === "number"
+          ? data.longitude
+          : null,
+
+      timezone:
+        cleanString(
+          data.timezone &&
+          (
+            data.timezone.id ||
+            data.timezone
+          )
+        ),
+
+      utc_offset:
+        cleanString(
+          data.timezone &&
+          data.timezone.utc
+        ),
+
+      asn:
+        cleanString(connection.asn),
+
+      organization:
+        cleanString(connection.org),
+
+      isp:
+        cleanString(connection.isp),
+
+      continent:
+        cleanString(data.continent_code),
+
+      currency:
+        data.currency
+          ? cleanString(
+              data.currency.code ||
+              data.currency
+            )
+          : ""
+    };
+
+  } catch (error) {
+    return null;
+  }
+}
+
+
+/* =========================
+   16) IP Only Fallback
+   ========================= */
+
+async function fetchIPOnly() {
+  const endpoints = [
+    "https://api.ipify.org?format=json",
+    "https://api64.ipify.org?format=json"
+  ];
+
+  for (const endpoint of endpoints) {
+    try {
+      const data =
+        await fetchJSON(
+          endpoint,
+          {},
+          3000
+        );
+
+      const ip =
+        cleanString(data.ip);
+
+      if (isValidIP(ip)) {
+        return ip;
+      }
+
+    } catch (error) {}
+  }
+
+  return "";
+}
+
+
+/* =========================
+   17) Cloudflare Worker
+   =========================
+   
+   إذا وضعت رابط Worker في:
+   NETWORK_WORKER_URL
+   
+   يجب أن يعيد JSON مثل:
+   {
+     "ip": "...",
+     "country": "...",
+     "country_code": "...",
+     "region": "...",
+     "city": "...",
+     "postal": "...",
+     "latitude": 0,
+     "longitude": 0,
+     "timezone": "...",
+     "asn": "...",
+     "organization": "...",
+     "isp": "..."
+   }
+*/
+
+async function fetchNetworkWorker() {
+  if (!NETWORK_WORKER_URL) {
+    return null;
+  }
+
+  try {
+    const data =
+      await fetchJSON(
+        NETWORK_WORKER_URL,
+        {},
+        API_TIMEOUT
+      );
+
+    if (!data) {
+      return null;
+    }
+
+    return {
+      source: "worker",
+
+      ip:
+        isValidIP(data.ip)
+          ? data.ip
+          : "",
+
+      country:
+        cleanString(data.country),
+
+      country_code:
+        cleanString(data.country_code),
+
+      region:
+        cleanString(data.region),
+
+      city:
+        cleanString(data.city),
+
+      postal:
+        cleanString(data.postal),
+
+      latitude:
+        typeof data.latitude === "number"
+          ? data.latitude
+          : null,
+
+      longitude:
+        typeof data.longitude === "number"
+          ? data.longitude
+          : null,
+
+      timezone:
+        cleanString(data.timezone),
+
+      utc_offset:
+        cleanString(data.utc_offset),
+
+      asn:
+        cleanString(data.asn),
+
+      organization:
+        cleanString(data.organization),
+
+      isp:
+        cleanString(data.isp),
+
+      continent:
+        cleanString(data.continent),
+
+      currency:
+        cleanString(data.currency)
+    };
+
+  } catch (error) {
+    return null;
+  }
+}
+
+
+/* =========================
+   18) Multi-Source GeoIP
+   ========================= */
+
+async function getMultiSourceIPInformation() {
+  const results =
+    await Promise.allSettled([
+      fetchNetworkWorker(),
+      fetchIPAPI(),
+      fetchIPWho()
+    ]);
+
+  const sources = [];
+
+  for (const result of results) {
+    if (
+      result.status === "fulfilled" &&
+      result.value
+    ) {
+      sources.push(result.value);
+    }
+  }
+
+  // إذا لم نجد IP من GeoIP
+  if (!sources.some(x => isValidIP(x.ip))) {
+    const fallbackIP =
+      await fetchIPOnly();
+
+    if (fallbackIP) {
+      sources.push({
+        source: "ipify",
+
+        ip: fallbackIP,
+
+        country: "",
+        country_code: "",
+        region: "",
+        city: "",
+        postal: "",
+        latitude: null,
+        longitude: null,
+        timezone: "",
+        utc_offset: "",
+        asn: "",
+        organization: "",
+        isp: "",
+        continent: "",
+        currency: ""
+      });
+    }
+  }
+
+  return sources;
+}
+
+
+/* =========================
+   19) Choose Best Geo Data
+   ========================= */
+
+function chooseBestValue(sources, key) {
+  for (const source of sources) {
+    const value = source[key];
+
+    if (
+      value !== undefined &&
+      value !== null &&
+      value !== ""
+    ) {
+      return value;
+    }
+  }
 
   return null;
 }
 
 
-// ============================================================
-// 10. خصائص الجهاز
-// ============================================================
-
-function getHardwareInfo() {
-
-  return {
-
-    hardware_concurrency:
-      navigator.hardwareConcurrency ||
-      null,
-
-    device_memory_gb:
-      typeof navigator.deviceMemory ===
-      "number"
-        ? navigator.deviceMemory
-        : null,
-
-    max_touch_points:
-      navigator.maxTouchPoints ||
-      0,
-
-    cookie_enabled:
-      typeof navigator.cookieEnabled ===
-      "boolean"
-        ? navigator.cookieEnabled
-        : null,
-
-    do_not_track:
-      navigator.doNotTrack ??
-      null,
-
-    global_privacy_control:
-      navigator.globalPrivacyControl ??
-      null,
-
-    online:
-      typeof navigator.onLine ===
-      "boolean"
-        ? navigator.onLine
-        : null,
-
-    pdf_viewer_enabled:
-      navigator.pdfViewerEnabled ??
-      null,
-
-    webdriver:
-      navigator.webdriver ??
-      null
-  };
-}
-
-
-// ============================================================
-// 11. معلومات الصفحة
-// ============================================================
-
-function getPageInfo() {
-
-  return {
-
-    page_url:
-      window.location.href,
-
-    page_path:
-      window.location.pathname ||
-      "/",
-
-    page_title:
-      document.title ||
-      "بدون عنوان",
-
-    referrer:
-      document.referrer ||
-      "مباشرة / غير معروف",
-
-    origin:
-      window.location.origin ||
-      "غير معروف"
-  };
-}
-
-
-// ============================================================
-// 12. معرف الجلسة
-// ============================================================
-
-function getSessionId() {
-
-  let sessionId =
-    sessionStorage.getItem(
-      "visitor_session_id"
-    );
-
-
-  if (!sessionId) {
-
-    if (
-      typeof crypto !== "undefined" &&
-      typeof crypto.randomUUID ===
-        "function"
-    ) {
-
-      sessionId =
-        crypto.randomUUID();
-
-    } else {
-
-      sessionId =
-        Date.now().toString(36) +
-        "-" +
-        Math.random()
-          .toString(36)
-          .substring(2);
-    }
-
-
-    sessionStorage.setItem(
-      "visitor_session_id",
-      sessionId
-    );
-  }
-
-
-  return sessionId;
-}
-
-
-// ============================================================
-// 13. API #1 — ipapi
-// ============================================================
-
-async function fetchIPAPI() {
-
-  const response =
-    await fetch(
-      "https://ipapi.co/json/",
-      {
-        method: "GET",
-        cache: "no-store"
-      }
-    );
-
-
-  if (!response.ok) {
-
-    throw new Error(
-      `ipapi HTTP ${response.status}`
-    );
-  }
-
-
-  const data =
-    await response.json();
-
-
-  if (!isValidIP(data.ip)) {
-    throw new Error(
-      "ipapi returned invalid IP"
-    );
-  }
-
-
-  return {
-
-    source:
-      "ipapi.co",
-
-    ip:
-      data.ip,
-
-    country:
-      data.country_name,
-
-    country_code:
-      data.country_code,
-
-    region:
-      data.region,
-
-    city:
-      data.city,
-
-    postal:
-      data.postal,
-
-    latitude:
-      data.latitude,
-
-    longitude:
-      data.longitude,
-
-    timezone:
-      data.timezone,
-
-    utc_offset:
-      data.utc_offset,
-
-    asn:
-      data.asn,
-
-    organization:
-      data.org,
-
-    continent_code:
-      data.continent_code,
-
-    currency:
-      data.currency,
-
-    raw:
-      data
-  };
-}
-
-
-// ============================================================
-// 14. API #2 — ipwho.is
-// ============================================================
-
-async function fetchIPWho() {
-
-  const response =
-    await fetch(
-      "https://ipwho.is/",
-      {
-        method: "GET",
-        cache: "no-store"
-      }
-    );
-
-
-  if (!response.ok) {
-
-    throw new Error(
-      `ipwho.is HTTP ${response.status}`
-    );
-  }
-
-
-  const data =
-    await response.json();
-
-
-  if (
-    data.success === false ||
-    !isValidIP(data.ip)
-  ) {
-
-    throw new Error(
-      "ipwho.is returned invalid data"
-    );
-  }
-
-
-  return {
-
-    source:
-      "ipwho.is",
-
-    ip:
-      data.ip,
-
-    country:
-      data.country,
-
-    country_code:
-      data.country_code,
-
-    region:
-      data.region,
-
-    city:
-      data.city,
-
-    postal:
-      data.postal,
-
-    latitude:
-      data.latitude,
-
-    longitude:
-      data.longitude,
-
-    timezone:
-      data.timezone?.id,
-
-    utc_offset:
-      data.timezone?.utc,
-
-    asn:
-      data.connection?.asn
-        ? `AS${data.connection.asn}`
-        : null,
-
-    organization:
-      data.connection?.org,
-
-    continent_code:
-      data.continent_code,
-
-    isp:
-      data.connection?.isp,
-
-    success:
-      data.success,
-
-    raw:
-      data
-  };
-}
-
-
-// ============================================================
-// 15. Public IP فقط — fallback
-// ============================================================
-
-async function fetchIPOnly() {
-
-  const endpoints = [
-
-    "https://api64.ipify.org?format=json",
-
-    "https://api.ipify.org?format=json"
-  ];
-
-
-  for (
-    const endpoint of endpoints
-  ) {
-
-    try {
-
-      const response =
-        await fetch(
-          endpoint,
-          {
-            method: "GET",
-            cache: "no-store"
-          }
-        );
-
-
-      if (!response.ok) {
-        continue;
-      }
-
-
-      const data =
-        await response.json();
-
-
-      if (
-        isValidIP(data.ip)
-      ) {
-
-        return {
-          ip: data.ip,
-          source:
-            endpoint.includes("api64")
-              ? "ipify64"
-              : "ipify"
-        };
-      }
-
-    } catch (e) {}
-  }
-
-
-  return {
-    ip: "غير معروف",
-    source: "none"
-  };
-}
-
-
-// ============================================================
-// 16. جمع GeoIP من عدة مصادر
-// ============================================================
-
-async function getMultiSourceIPInformation() {
-
-  const results = [];
-
-
-  // نستعلم بالتوازي لتقليل وقت الانتظار.
-
-  const responses =
-    await Promise.allSettled([
-
-      fetchIPAPI(),
-
-      fetchIPWho()
-    ]);
-
-
-  for (
-    const result of responses
-  ) {
-
-    if (
-      result.status ===
-      "fulfilled"
-    ) {
-
-      results.push(
-        result.value
-      );
-    }
-  }
-
-
-  // ----------------------------------------------------------
-  // إذا فشل المصدران
-  // ----------------------------------------------------------
-
-  if (!results.length) {
-
-    const fallback =
-      await fetchIPOnly();
-
-
+function chooseBestGeo(sources) {
+  if (!sources || !sources.length) {
     return {
-
-      ip:
-        fallback.ip,
-
-      country:
-        "غير معروف",
-
-      country_code:
-        "غير معروف",
-
-      region:
-        "غير معروف",
-
-      city:
-        "غير معروف",
-
-      postal:
-        "غير متوفر",
-
-      latitude:
-        null,
-
-      longitude:
-        null,
-
-      timezone:
-        "غير معروف",
-
-      utc_offset:
-        "غير معروف",
-
-      asn:
-        "غير معروف",
-
-      organization:
-        "غير معروف",
-
-      continent_code:
-        "غير معروف",
-
-      currency:
-        "غير معروف",
-
-      isp:
-        "غير معروف",
-
-      geo_sources:
-        fallback.source,
-
-      geo_source_count:
-        0,
-
-      geo_consensus:
-        "غير متوفر"
+      ip: "",
+      country: "",
+      country_code: "",
+      region: "",
+      city: "",
+      postal: "",
+      latitude: null,
+      longitude: null,
+      timezone: "",
+      utc_offset: "",
+      asn: "",
+      organization: "",
+      isp: "",
+      continent: "",
+      currency: "",
+      sources: [],
+      source_count: 0,
+      consensus: "غير متوفر"
     };
   }
 
-
-  // ----------------------------------------------------------
-  // اختيار البيانات
-  // ----------------------------------------------------------
-
-  const first =
-    results[0];
-
-
-  const second =
-    results[1] || null;
-
-
-  // إذا اختلف IP بين المصادر،
-  // نحتفظ بالأمر بدل افتراض أن أحدهما صحيح.
-
   const ipValues =
-    results
-      .map(
-        item => item.ip
-      )
-      .filter(
-        isValidIP
-      );
+    sources
+      .map(x => x.ip)
+      .filter(isValidIP);
 
+  let consensus = "غير متوفر";
 
-  const uniqueIPs =
-    [...new Set(ipValues)];
+  if (ipValues.length) {
+    const uniqueIPs =
+      [...new Set(ipValues)];
 
-
-  let finalIP =
-    first.ip;
-
-
-  if (
-    uniqueIPs.length === 1
-  ) {
-
-    finalIP =
-      uniqueIPs[0];
-
-  } else if (
-    uniqueIPs.length > 1
-  ) {
-
-    finalIP =
-      uniqueIPs.join(" | ");
-  }
-
-
-  // ----------------------------------------------------------
-  // مقارنة المصادر
-  // ----------------------------------------------------------
-
-  const countryCodes =
-    results
-      .map(
-        item => item.country_code
-      )
-      .filter(Boolean);
-
-
-  const cities =
-    results
-      .map(
-        item => item.city
-      )
-      .filter(Boolean);
-
-
-  const countriesMatch =
-    countryCodes.length > 1 &&
-    new Set(countryCodes).size === 1;
-
-
-  const citiesMatch =
-    cities.length > 1 &&
-    new Set(cities).size === 1;
-
-
-  let consensus =
-    "مصدر واحد";
-
-
-  if (
-    results.length >= 2
-  ) {
-
-    if (
-      countriesMatch &&
-      citiesMatch
-    ) {
-
-      consensus =
-        "توافق قوي";
-
-    } else if (
-      countriesMatch
-    ) {
-
-      consensus =
-        "توافق الدولة";
-
-    } else {
-
-      consensus =
-        "اختلاف بين المصادر";
-    }
-  }
-
-
-  // ----------------------------------------------------------
-  // دمج البيانات
-  // ----------------------------------------------------------
-
-  function firstAvailable(field) {
-
-    for (
-      const item of results
-    ) {
-
-      if (
-        item[field] !==
-          undefined &&
-        item[field] !==
-          null &&
-        item[field] !== ""
-      ) {
-
-        return item[field];
-      }
-    }
-
-
-    return null;
-  }
-
-
-  return {
-
-    ip:
-      finalIP,
-
-    country:
-      firstAvailable("country") ||
-      "غير معروف",
-
-    country_code:
-      firstAvailable("country_code") ||
-      "غير معروف",
-
-    region:
-      firstAvailable("region") ||
-      "غير معروف",
-
-    city:
-      firstAvailable("city") ||
-      "غير معروف",
-
-    postal:
-      firstAvailable("postal") ||
-      "غير متوفر",
-
-    latitude:
-      firstAvailable("latitude"),
-
-    longitude:
-      firstAvailable("longitude"),
-
-    timezone:
-      firstAvailable("timezone") ||
-      "غير معروف",
-
-    utc_offset:
-      firstAvailable("utc_offset") ||
-      "غير معروف",
-
-    asn:
-      firstAvailable("asn") ||
-      "غير معروف",
-
-    organization:
-      firstAvailable("organization") ||
-      "غير معروف",
-
-    continent_code:
-      firstAvailable("continent_code") ||
-      "غير معروف",
-
-    currency:
-      firstAvailable("currency") ||
-      "غير معروف",
-
-    isp:
-      firstAvailable("isp") ||
-      "غير معروف",
-
-    geo_sources:
-      results
-        .map(
-          item => item.source
-        )
-        .join(", "),
-
-    geo_source_count:
-      results.length,
-
-    geo_consensus:
-      consensus,
-
-    ip_agreement:
+    consensus =
       uniqueIPs.length === 1
         ? "متطابق"
-        : uniqueIPs.length > 1
-          ? "مختلف"
-          : "غير متوفر"
+        : "غير متطابق";
+  }
+
+  return {
+    ip:
+      chooseBestValue(sources, "ip") || "",
+
+    country:
+      chooseBestValue(sources, "country") || "",
+
+    country_code:
+      chooseBestValue(sources, "country_code") || "",
+
+    region:
+      chooseBestValue(sources, "region") || "",
+
+    city:
+      chooseBestValue(sources, "city") || "",
+
+    postal:
+      chooseBestValue(sources, "postal") || "",
+
+    latitude:
+      chooseBestValue(sources, "latitude"),
+
+    longitude:
+      chooseBestValue(sources, "longitude"),
+
+    timezone:
+      chooseBestValue(sources, "timezone") || "",
+
+    utc_offset:
+      chooseBestValue(sources, "utc_offset") || "",
+
+    asn:
+      chooseBestValue(sources, "asn") || "",
+
+    organization:
+      chooseBestValue(sources, "organization") || "",
+
+    isp:
+      chooseBestValue(sources, "isp") || "",
+
+    continent:
+      chooseBestValue(sources, "continent") || "",
+
+    currency:
+      chooseBestValue(sources, "currency") || "",
+
+    sources:
+      sources
+        .map(x => x.source)
+        .filter(Boolean),
+
+    source_count:
+      sources.length,
+
+    consensus
   };
 }
 
 
-// ============================================================
-// 17. تحليل الشبكة
-// ============================================================
+/* =========================
+   20) Network Provider Analysis
+   ========================= */
 
-function analyzeNetworkProvider(
-  ipData
-) {
+function analyzeNetworkProvider(geo) {
+  const text = [
+    geo.organization,
+    geo.isp,
+    geo.asn
+  ]
+    .filter(Boolean)
+    .join(" ")
+    .toLowerCase();
 
-  const organization =
-    String(
-      ipData.organization ||
-      ""
-    ).toLowerCase();
-
-
-  const isp =
-    String(
-      ipData.isp ||
-      ""
-    ).toLowerCase();
-
-
-  const asn =
-    String(
-      ipData.asn ||
-      ""
-    ).toLowerCase();
-
-
-  const text =
-    `${organization} ${isp} ${asn}`;
-
-
-  const hostingIndicators = [
-
-    "hosting",
-    "host",
-    "datacenter",
-    "data center",
-    "cloud",
-    "server",
-    "digitalocean",
+  const hostingKeywords = [
     "amazon",
     "aws",
     "google cloud",
     "google llc",
-    "microsoft azure",
+    "microsoft",
     "azure",
-    "linode",
-    "vultr",
-    "scaleway",
+    "digitalocean",
     "ovh",
     "hetzner",
-    "leaseweb",
+    "vultr",
+    "linode",
+    "oracle cloud",
     "contabo",
-    "oracle cloud"
+    "hostinger",
+    "leaseweb",
+    "datacamp",
+    "choopa",
+    "akamai"
   ];
 
-
-  const vpnIndicators = [
-
-    "vpn",
+  const vpnKeywords = [
     "nordvpn",
-    "mullvad",
     "expressvpn",
     "surfshark",
-    "proton",
-    "windscribe",
-    "tunnelbear"
+    "protonvpn",
+    "mullvad",
+    "private internet access",
+    "pia vpn",
+    "cyberghost",
+    "windscribe"
   ];
 
-
-  const proxyIndicators = [
-
+  const proxyKeywords = [
     "proxy",
-    "proxies",
-    "anonymous"
+    "vpn",
+    "anonymizer",
+    "privacy",
+    "datacenter"
   ];
 
-
-  const torIndicators = [
-
-    "tor"
-  ];
-
-
-  const hostingMatches =
-    hostingIndicators.filter(
-      keyword =>
-        text.includes(keyword)
-    );
-
-
-  const vpnMatches =
-    vpnIndicators.filter(
-      keyword =>
-        text.includes(keyword)
-    );
-
-
-  const proxyMatches =
-    proxyIndicators.filter(
-      keyword =>
-        text.includes(keyword)
-    );
-
-
-  const torMatches =
-    torIndicators.filter(
-      keyword =>
-        text.includes(keyword)
-    );
-
-
-  let classification =
-    "غير محدد";
-
-
-  let confidence = 0;
-
-
-  if (
-    vpnMatches.length
-  ) {
-
-    classification =
-      "VPN محتمل";
-
-    confidence = 85;
-
-  } else if (
-    proxyMatches.length
-  ) {
-
-    classification =
-      "Proxy محتمل";
-
-    confidence = 80;
-
-  } else if (
-    torMatches.length
-  ) {
-
-    classification =
-      "Tor محتمل";
-
-    confidence = 90;
-
-  } else if (
-    hostingMatches.length
-  ) {
-
-    classification =
-      "Hosting / Datacenter";
-
-    confidence = 80;
-
-  }
-
-
-  // مؤشرات الهاتف المحمول
   const mobileKeywords = [
-
-    "mobile",
-    "telecom",
-    "communications",
     "mobilis",
     "ooredoo",
     "djezzy",
-    "orange",
-    "vodafone",
     "telefonica",
-    "telekom",
-    "cellular"
+    "vodafone",
+    "orange",
+    "t-mobile",
+    "verizon",
+    "at&t",
+    "att mobility",
+    "telecom",
+    "cellular",
+    "mobile"
   ];
 
-
-  const mobileMatches =
-    mobileKeywords.filter(
-      keyword =>
-        text.includes(keyword)
+  const hostingMatches =
+    hostingKeywords.filter(k =>
+      text.includes(k)
     );
 
+  const vpnMatches =
+    vpnKeywords.filter(k =>
+      text.includes(k)
+    );
+
+  const proxyMatches =
+    proxyKeywords.filter(k =>
+      text.includes(k)
+    );
+
+  const mobileMatches =
+    mobileKeywords.filter(k =>
+      text.includes(k)
+    );
+
+  let classification = "غير محدد";
+  let confidence = "منخفضة";
+
+  if (vpnMatches.length) {
+    classification = "VPN محتمل";
+    confidence = "متوسطة";
+  } else if (hostingMatches.length) {
+    classification = "استضافة / Datacenter محتمل";
+    confidence = "متوسطة";
+  } else if (proxyMatches.length) {
+    classification = "Proxy / Privacy محتمل";
+    confidence = "منخفضة";
+  } else if (mobileMatches.length) {
+    classification = "شبكة جوال محتملة";
+    confidence = "منخفضة";
+  } else if (geo.isp || geo.organization) {
+    classification = "مزود إنترنت عادي محتمل";
+    confidence = "منخفضة";
+  }
 
   return {
+    network_classification: classification,
 
-    network_classification:
-      classification,
-
-    network_confidence:
-      confidence,
+    network_confidence: confidence,
 
     hosting_detected:
       hostingMatches.length > 0,
@@ -1597,410 +1364,74 @@ function analyzeNetworkProvider(
       proxyMatches.length > 0,
 
     tor_indicator:
-      torMatches.length > 0,
+      text.includes("tor") &&
+      (
+        text.includes("tor exit") ||
+        text.includes("torproject")
+      ),
 
     mobile_provider_indicator:
       mobileMatches.length > 0,
 
     hosting_matches:
-      hostingMatches.join(", ") ||
-      "لا يوجد",
+      hostingMatches,
 
     vpn_matches:
-      vpnMatches.join(", ") ||
-      "لا يوجد",
+      vpnMatches,
 
     proxy_matches:
-      proxyMatches.join(", ") ||
-      "لا يوجد",
-
-    provider:
-      safeValue(
-        ipData.organization ||
-        ipData.isp,
-        "غير معروف"
-      )
+      proxyMatches
   };
 }
 
 
-// ============================================================
-// 18. تجميع كل المعلومات
-// ============================================================
+/* =========================
+   21) Base Visitor Data
+   ========================= */
 
-async function collectVisitorData() {
-
-  // IP / GeoIP
-  const ipData =
-    await getMultiSourceIPInformation();
-
-
-  // الجهاز
-  const deviceInfo =
+async function collectBaseVisitorData() {
+  const device =
     getDeviceInfo();
 
-
-  // Client Hints
-  const userAgentData =
+  const uaData =
     await getUserAgentData();
 
-
-  // الشاشة
-  const displayInfo =
+  const display =
     getDisplayInfo();
 
-
-  // اللغة
-  const localeInfo =
+  const locale =
     getLocaleInfo();
 
-
-  // الشبكة
-  const networkInfo =
+  const network =
     getNetworkInfo();
 
-
-  // Hardware
-  const hardwareInfo =
+  const hardware =
     getHardwareInfo();
 
-
-  // الصفحة
-  const pageInfo =
+  const page =
     getPageInfo();
 
-
-  // تحليل الشبكة
-  const networkAnalysis =
-    analyzeNetworkProvider(
-      ipData
-    );
-
-
-  // قياس RTT فعلي
-  const measuredRTT =
-    await measureRealRTT();
-
-
-  // Session
   const sessionId =
     getSessionId();
 
+  let measuredRTT = null;
+
+  try {
+    measuredRTT =
+      await measureRealRTT();
+  } catch (e) {}
 
   return {
-
-    // ========================================================
-    // IP / GEO
-    // ========================================================
-
-    ip:
-      ipData.ip,
-
-    country:
-      ipData.country,
-
-    country_code:
-      ipData.country_code,
-
-    region:
-      ipData.region,
-
-    city:
-      ipData.city,
-
-    postal:
-      ipData.postal,
-
-    geo_latitude:
-      ipData.latitude,
-
-    geo_longitude:
-      ipData.longitude,
-
-    geo_timezone:
-      ipData.timezone,
-
-    utc_offset:
-      ipData.utc_offset,
-
-    asn:
-      ipData.asn,
-
-    organization:
-      ipData.organization,
-
-    isp:
-      ipData.isp,
-
-    continent:
-      ipData.continent_code,
-
-    currency:
-      ipData.currency,
-
-    geo_sources:
-      ipData.geo_sources,
-
-    geo_source_count:
-      ipData.geo_source_count,
-
-    geo_consensus:
-      ipData.geo_consensus,
-
-    ip_agreement:
-      ipData.ip_agreement,
-
-
-    // ========================================================
-    // NETWORK INTELLIGENCE
-    // ========================================================
-
-    network_classification:
-      networkAnalysis.network_classification,
-
-    network_confidence:
-      networkAnalysis.network_confidence,
-
-    hosting_detected:
-      networkAnalysis.hosting_detected,
-
-    vpn_detected:
-      networkAnalysis.vpn_detected,
-
-    proxy_detected:
-      networkAnalysis.proxy_detected,
-
-    tor_indicator:
-      networkAnalysis.tor_indicator,
-
-    mobile_provider_indicator:
-      networkAnalysis.mobile_provider_indicator,
-
-    hosting_matches:
-      networkAnalysis.hosting_matches,
-
-    vpn_matches:
-      networkAnalysis.vpn_matches,
-
-    proxy_matches:
-      networkAnalysis.proxy_matches,
-
-
-    // ========================================================
-    // DEVICE
-    // ========================================================
-
-    device_type:
-      deviceInfo.device_type,
-
-    operating_system:
-      deviceInfo.operating_system,
-
-    operating_system_name:
-      deviceInfo.operating_system_name,
-
-    operating_system_version:
-      deviceInfo.operating_system_version,
-
-    browser:
-      deviceInfo.browser,
-
-    browser_version:
-      deviceInfo.browser_version,
-
-    platform:
-      deviceInfo.platform,
-
-    vendor:
-      deviceInfo.vendor,
-
-    user_agent:
-      deviceInfo.user_agent,
-
-
-    // ========================================================
-    // CLIENT HINTS
-    // ========================================================
-
-    user_agent_data_available:
-      userAgentData.available,
-
-    ua_mobile:
-      userAgentData.mobile ??
-      null,
-
-    ua_platform:
-      userAgentData.platform ??
-      "غير متوفر",
-
-    ua_platform_version:
-      userAgentData.platform_version ??
-      "غير متوفر",
-
-    ua_architecture:
-      userAgentData.architecture ??
-      "غير متوفر",
-
-    ua_bitness:
-      userAgentData.bitness ??
-      "غير متوفر",
-
-    ua_model:
-      userAgentData.model ??
-      "غير متوفر",
-
-    ua_brands:
-      userAgentData.brands ??
-      "غير متوفر",
-
-    ua_full_version_list:
-      userAgentData.full_version_list ??
-      "غير متوفر",
-
-    ua_form_factors:
-      userAgentData.form_factors ??
-      "غير متوفر",
-
-
-    // ========================================================
-    // LOCALE
-    // ========================================================
-
-    device_timezone:
-      localeInfo.device_timezone,
-
-    device_language:
-      localeInfo.device_language,
-
-    languages:
-      localeInfo.languages,
-
-    timezone_offset_minutes:
-      localeInfo.timezone_offset_minutes,
-
-
-    // ========================================================
-    // CONNECTION
-    // ========================================================
-
-    network_api_available:
-      networkInfo.network_api_available,
-
-    network_type:
-      networkInfo.network_type,
-
-    effective_network_type:
-      networkInfo.effective_network_type,
-
-    downlink_mbps:
-      networkInfo.downlink_mbps,
-
-    downlink_max_mbps:
-      networkInfo.downlink_max_mbps,
-
-    rtt_ms:
-      networkInfo.rtt_ms,
+    ...device,
+    ...uaData,
+    ...display,
+    ...locale,
+    ...network,
+    ...hardware,
+    ...page,
 
     measured_rtt_ms:
       measuredRTT,
-
-    save_data:
-      networkInfo.save_data,
-
-
-    // ========================================================
-    // DISPLAY
-    // ========================================================
-
-    screen_width:
-      displayInfo.screen_width,
-
-    screen_height:
-      displayInfo.screen_height,
-
-    screen_available_width:
-      displayInfo.screen_available_width,
-
-    screen_available_height:
-      displayInfo.screen_available_height,
-
-    viewport_width:
-      displayInfo.viewport_width,
-
-    viewport_height:
-      displayInfo.viewport_height,
-
-    pixel_ratio:
-      displayInfo.pixel_ratio,
-
-    color_depth:
-      displayInfo.color_depth,
-
-    pixel_depth:
-      displayInfo.pixel_depth,
-
-    orientation:
-      displayInfo.orientation,
-
-    orientation_angle:
-      displayInfo.orientation_angle,
-
-
-    // ========================================================
-    // HARDWARE
-    // ========================================================
-
-    hardware_concurrency:
-      hardwareInfo.hardware_concurrency,
-
-    device_memory_gb:
-      hardwareInfo.device_memory_gb,
-
-    max_touch_points:
-      hardwareInfo.max_touch_points,
-
-    cookie_enabled:
-      hardwareInfo.cookie_enabled,
-
-    do_not_track:
-      hardwareInfo.do_not_track,
-
-    global_privacy_control:
-      hardwareInfo.global_privacy_control,
-
-    online:
-      hardwareInfo.online,
-
-    pdf_viewer_enabled:
-      hardwareInfo.pdf_viewer_enabled,
-
-    webdriver:
-      hardwareInfo.webdriver,
-
-
-    // ========================================================
-    // PAGE
-    // ========================================================
-
-    page_url:
-      pageInfo.page_url,
-
-    page_path:
-      pageInfo.page_path,
-
-    page_title:
-      pageInfo.page_title,
-
-    referrer:
-      pageInfo.referrer,
-
-    origin:
-      pageInfo.origin,
-
-
-    // ========================================================
-    // SESSION
-    // ========================================================
 
     session_id:
       sessionId,
@@ -2011,68 +1442,216 @@ async function collectVisitorData() {
 }
 
 
-// ============================================================
-// 19. حفظ البيانات
-// ============================================================
+/* =========================
+   22) Build Geo Enrichment
+   ========================= */
 
-async function saveToFirestore(
-  visitorData
-) {
+async function collectGeoEnrichment() {
+  const sources =
+    await getMultiSourceIPInformation();
 
-  await db
-    .collection("visitors")
-    .add(visitorData);
+  const geo =
+    chooseBestGeo(sources);
 
+  const networkAnalysis =
+    analyzeNetworkProvider(geo);
 
-  sessionStorage.setItem(
-    "visitor_logged",
-    "true"
-  );
+  return {
+    // IP / Geo
+    ip:
+      geo.ip,
+
+    country:
+      geo.country,
+
+    country_code:
+      geo.country_code,
+
+    region:
+      geo.region,
+
+    city:
+      geo.city,
+
+    postal:
+      geo.postal,
+
+    geo_latitude:
+      geo.latitude,
+
+    geo_longitude:
+      geo.longitude,
+
+    // توافق admin.html
+    lat:
+      geo.latitude,
+
+    lon:
+      geo.longitude,
+
+    geo_timezone:
+      geo.timezone,
+
+    utc_offset:
+      geo.utc_offset,
+
+    asn:
+      geo.asn,
+
+    organization:
+      geo.organization,
+
+    isp:
+      geo.isp,
+
+    continent:
+      geo.continent,
+
+    currency:
+      geo.currency,
+
+    geo_sources:
+      geo.sources,
+
+    geo_source_count:
+      geo.source_count,
+
+    geo_consensus:
+      geo.consensus,
+
+    ip_agreement:
+      geo.consensus,
+
+    ...networkAnalysis
+  };
 }
 
 
-// ============================================================
-// 20. التسجيل الرئيسي
-// ============================================================
+/* =========================
+   23) Compatibility Aliases
+   ========================= */
+
+function addAdminCompatibilityFields(data) {
+  return {
+    ...data,
+
+    // OS
+    os:
+      data.operating_system || "",
+
+    // RAM
+    device_memory:
+      data.device_memory_gb ?? null,
+
+    // Pixel ratio
+    device_pixel_ratio:
+      data.pixel_ratio ?? null,
+
+    // Cookies
+    cookies_enabled:
+      data.cookie_enabled ?? null,
+
+    // Network
+    effective_type:
+      data.effective_network_type || "",
+
+    downlink:
+      data.downlink_mbps ?? null,
+
+    rtt:
+      data.rtt_ms ?? null,
+
+    // Geo
+    lat:
+      data.geo_latitude ?? null,
+
+    lon:
+      data.geo_longitude ?? null,
+
+    // Older admin compatibility
+    org:
+      data.organization || ""
+  };
+}
+
+
+/* =========================
+   24) Save Visitor
+   ========================= */
+
+async function saveVisitor(data) {
+  const finalData =
+    addAdminCompatibilityFields(data);
+
+  const docRef =
+    await db
+      .collection("visitors")
+      .add(finalData);
+
+  return docRef;
+}
+
+
+/* =========================
+   25) Main Visitor Logger
+   ========================= */
 
 async function logVisitor() {
-
-  // منع التسجيل المتكرر في نفس Session
-  if (
-    sessionStorage.getItem(
-      "visitor_logged"
-    )
-  ) {
-
-    console.log(
-      "Visitor already logged in this session."
-    );
-
-    return;
-  }
-
-
   try {
 
-    console.log(
-      "Collecting visitor intelligence..."
-    );
+    // منع تسجيل نفس جلسة التصفح عدة مرات
+    try {
+      if (
+        sessionStorage.getItem(
+          "visitor_logged"
+        ) === "1"
+      ) {
+        return;
+      }
+    } catch (e) {}
 
+    /*
+      المرحلة الأولى:
+      جمع معلومات المتصفح والجهاز وحفظها فورًا.
+      بهذه الطريقة لا نخسر الزيارة إذا فشل GeoIP.
+    */
 
-    const visitorData =
-      await collectVisitorData();
+    const baseData =
+      await collectBaseVisitorData();
 
+    const docRef =
+      await saveVisitor(baseData);
 
-    await saveToFirestore(
-      visitorData
-    );
+    /*
+      نعتبر الزيارة مسجلة الآن.
+    */
 
+    try {
+      sessionStorage.setItem(
+        "visitor_logged",
+        "1"
+      );
+    } catch (e) {}
 
-    console.log(
-      "SUCCESS: Visitor logged successfully!",
-      visitorData
-    );
+    /*
+      المرحلة الثانية:
+      إثراء نفس الوثيقة بمعلومات IP / Geo.
+    */
 
+    try {
+      const enrichment =
+        await collectGeoEnrichment();
+
+      await docRef.update(
+        enrichment
+      );
+
+    } catch (geoError) {
+      console.warn(
+        "Geo enrichment failed:",
+        geoError
+      );
+    }
 
   } catch (error) {
 
@@ -2081,228 +1660,121 @@ async function logVisitor() {
       error
     );
 
-
-    // محاولة IP احتياطية
-    await fallbackLogVisitor();
-  }
-}
-
-
-// ============================================================
-// 21. Fallback
-// ============================================================
-
-async function fallbackLogVisitor() {
-
-  try {
-
-    const ipData =
-      await fetchIPOnly();
-
-
-    const deviceInfo =
-      getDeviceInfo();
-
-
-    const localeInfo =
-      getLocaleInfo();
-
-
-    const networkInfo =
-      getNetworkInfo();
-
-
-    const pageInfo =
-      getPageInfo();
-
-
-    const visitorData = {
-
-      ip:
-        safeValue(
-          ipData.ip,
-          "غير معروف"
-        ),
-
-      country:
-        "غير معروف",
-
-      country_code:
-        "غير معروف",
-
-      region:
-        "غير معروف",
-
-      city:
-        "غير معروف",
-
-      postal:
-        "غير متوفر",
-
-      geo_latitude:
-        null,
-
-      geo_longitude:
-        null,
-
-      geo_timezone:
-        "غير معروف",
-
-      utc_offset:
-        "غير معروف",
-
-      asn:
-        "غير معروف",
-
-      organization:
-        "غير معروف",
-
-      isp:
-        "غير معروف",
-
-      geo_sources:
-        ipData.source,
-
-      geo_source_count:
-        0,
-
-      geo_consensus:
-        "Fallback",
-
-
-      device_type:
-        deviceInfo.device_type,
-
-      operating_system:
-        deviceInfo.operating_system,
-
-      browser:
-        deviceInfo.browser,
-
-      browser_version:
-        deviceInfo.browser_version,
-
-      user_agent:
-        deviceInfo.user_agent,
-
-
-      device_timezone:
-        localeInfo.device_timezone,
-
-      device_language:
-        localeInfo.device_language,
-
-      languages:
-        localeInfo.languages,
-
-
-      network_type:
-        networkInfo.network_type,
-
-      effective_network_type:
-        networkInfo.effective_network_type,
-
-      downlink_mbps:
-        networkInfo.downlink_mbps,
-
-      rtt_ms:
-        networkInfo.rtt_ms,
-
-      save_data:
-        networkInfo.save_data,
-
-
-      page_url:
-        pageInfo.page_url,
-
-      page_path:
-        pageInfo.page_path,
-
-      page_title:
-        pageInfo.page_title,
-
-      referrer:
-        pageInfo.referrer,
-
-
-      session_id:
-        getSessionId(),
-
-      timestamp:
-        firebase.firestore.FieldValue.serverTimestamp()
-    };
-
-
-    await saveToFirestore(
-      visitorData
-    );
-
-
-    console.log(
-      "Fallback visitor saved."
-    );
-
-
-  } catch (error) {
-
-    console.error(
-      "Fallback logging failed:",
-      error
-    );
-  }
-}
-
-
-// ============================================================
-// 22. مراقبة تغير الشبكة
-// ============================================================
-
-function attachNetworkListener() {
-
-  const connection =
-    navigator.connection ||
-    navigator.mozConnection ||
-    navigator.webkitConnection;
-
-
-  if (
-    connection &&
-    typeof connection.addEventListener ===
-      "function"
-  ) {
-
-    connection.addEventListener(
-      "change",
-      () => {
-
-        console.log(
-          "Network connection changed:",
-          getNetworkInfo()
+    /*
+      محاولة أخيرة لحفظ الحد الأدنى.
+    */
+
+    try {
+      const fallback = {
+        device_type:
+          /Mobi|Android|iPhone/i.test(
+            navigator.userAgent || ""
+          )
+            ? "Mobile"
+            : "Desktop",
+
+        operating_system:
+          navigator.platform ||
+          "غير متوفر",
+
+        browser:
+          navigator.userAgent ||
+          "غير متوفر",
+
+        user_agent:
+          navigator.userAgent ||
+          "غير متوفر",
+
+        page_url:
+          window.location.href,
+
+        page_path:
+          window.location.pathname,
+
+        page_title:
+          document.title || "",
+
+        referrer:
+          document.referrer || "",
+
+        device_language:
+          navigator.language || "",
+
+        device_timezone:
+          (() => {
+            try {
+              return Intl.DateTimeFormat()
+                .resolvedOptions()
+                .timeZone || "";
+            } catch (e) {
+              return "";
+            }
+          })(),
+
+        session_id:
+          getSessionId(),
+
+        timestamp:
+          firebase.firestore.FieldValue.serverTimestamp()
+      };
+
+      await saveVisitor(
+        fallback
+      );
+
+      try {
+        sessionStorage.setItem(
+          "visitor_logged",
+          "1"
         );
-      }
-    );
+      } catch (e) {}
+
+    } catch (fallbackError) {
+      console.error(
+        "Fallback visitor logging failed:",
+        fallbackError
+      );
+    }
   }
 }
 
 
-// ============================================================
-// 23. بدء النظام
-// ============================================================
+/* =========================
+   26) Online / Offline Listener
+   ========================= */
 
-attachNetworkListener();
+window.addEventListener(
+  "online",
+  () => {
+    console.log(
+      "Network connection restored."
+    );
+  }
+);
 
+window.addEventListener(
+  "offline",
+  () => {
+    console.log(
+      "Network connection lost."
+    );
+  }
+);
+
+
+/* =========================
+   27) Start
+   ========================= */
 
 if (
-  document.readyState ===
-  "loading"
+  document.readyState === "loading"
 ) {
-
   document.addEventListener(
     "DOMContentLoaded",
-    logVisitor
+    () => {
+      logVisitor();
+    }
   );
-
 } else {
-
   logVisitor();
-}
+  }
