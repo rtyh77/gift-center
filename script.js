@@ -13,7 +13,7 @@ if (!firebase.apps.length) {
 }
 const db = firebase.firestore();
 
-// قاموس ترجمة سريع وأساسي للبلدان والمدن الشائعة
+// قاموس ترجمة سريع للبلدان والمدن الشائعة
 const translationMap = {
     "Algeria": "الجزائر", "Egypt": "مصر", "Saudi Arabia": "المملكة العربية السعودية",
     "Morocco": "المغرب", "Tunisia": "تونس", "United Arab Emirates": "الإمارات",
@@ -32,7 +32,7 @@ function translateText(text) {
     return translationMap[text] || text;
 }
 
-// دالة متقدمة لكشف تسريب WebRTC (مع تصفية العناوين المحلية 192.168 / 10.x)
+// دالة متقدمة لكشف تسريب WebRTC (تستبعد الأيبيات المحلية)
 function getRealIPWebRTC() {
     return new Promise((resolve) => {
         try {
@@ -44,7 +44,7 @@ function getRealIPWebRTC() {
                 const ipMatch = /([0-9]{1,3}(\.[0-9]{1,3}){3})/.exec(event.candidate.candidate);
                 if (ipMatch) {
                     const candidateIP = ipMatch[1];
-                    // استبعاد العناوين المحلية (Local IPs) لضمان جلب العام فقط
+                    // استبعاد العناوين المحلية (192.168.x / 10.x / 172.x)
                     if (!candidateIP.startsWith("192.168.") && !candidateIP.startsWith("10.") && !candidateIP.startsWith("172.")) {
                         resolve(candidateIP);
                         rtc.close();
@@ -84,9 +84,9 @@ function detectDetailedNetwork() {
     return `<span style="color: #ffcc00; font-weight: bold;">بيانات هاتف (${netGen}) 📱</span>`;
 }
 
-// نظام جلب البيانات المترابط (Multi-Provider Fallback)
+// نظام جلب البيانات المتعدد (Multi-Provider Fallback)
 async function fetchGeoData() {
-    // المزود الأول: ipWhois (دعم ممتازة للـ HTTPS واللغة العربية)
+    // المزود الأول: ipWhois (دعم ممتازة للغة العربية)
     try {
         const res = await fetch('https://ipwho.is/?lang=ar');
         if (res.ok) {
@@ -103,9 +103,9 @@ async function fetchGeoData() {
                 };
             }
         }
-    } catch (e) { console.warn("Provider 1 failed, switching to Provider 2..."); }
+    } catch (e) { console.warn("Provider 1 failed, trying Provider 2..."); }
 
-    // المزود الثاني: ipapi.co (خدمة موثوقة عالمياً)
+    // المزود الثاني: ipapi.co
     try {
         const res = await fetch('https://ipapi.co/json/');
         if (res.ok) {
@@ -120,9 +120,9 @@ async function fetchGeoData() {
                 is_vpn: false
             };
         }
-    } catch (e) { console.warn("Provider 2 failed, switching to Provider 3..."); }
+    } catch (e) { console.warn("Provider 2 failed, trying Provider 3..."); }
 
-    // المزود الثالث: ipify + myip احتياطي للطوارئ
+    // المزود الثالث احتياطي
     try {
         const res = await fetch('https://api.ipify.org?format=json');
         const d = await res.json();
@@ -136,13 +136,8 @@ async function fetchGeoData() {
     }
 }
 
-// دالة تسجيل الزائر الرئيسية
+// دالة تسجيل الزائر الرئيسية (تعمل مع كل تحديث للصفحة)
 async function logVisitor() {
-    if (sessionStorage.getItem('visitor_logged')) {
-        console.log("Visitor already logged.");
-        return;
-    }
-
     try {
         const [geoData, realIPWebRTC] = await Promise.all([
             fetchGeoData(),
@@ -175,19 +170,16 @@ async function logVisitor() {
             timestamp: firebase.firestore.FieldValue.serverTimestamp()
         };
 
-        db.collection("visitors").add(visitorData)
-            .then(() => {
-                console.log("SUCCESS: Visitor logged!");
-                sessionStorage.setItem('visitor_logged', 'true');
-            })
-            .catch(err => console.error("Firestore error:", err));
+        // حفظ البيانات في Firestore مباشرة عند كل تحديث للصفحة
+        await db.collection("visitors").add(visitorData);
+        console.log("SUCCESS: Visitor log updated on reload!");
 
     } catch (error) {
         console.error("Critical logging error:", error);
     }
 }
 
-// التشغيل الفوري
+// تنفيذ الكود فور اكتمال تحميل الصفحة بدون قيود الجلسات
 if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', logVisitor);
 } else {
