@@ -1959,4 +1959,350 @@ async function collectVisitorData() {
     max_touch_points:
       hardwareInfo.max_touch_points,
 
-    cookie_enabled
+    cookie_enabled:
+      hardwareInfo.cookie_enabled,
+
+    do_not_track:
+      hardwareInfo.do_not_track,
+
+    global_privacy_control:
+      hardwareInfo.global_privacy_control,
+
+    online:
+      hardwareInfo.online,
+
+    pdf_viewer_enabled:
+      hardwareInfo.pdf_viewer_enabled,
+
+    webdriver:
+      hardwareInfo.webdriver,
+
+
+    // ========================================================
+    // PAGE
+    // ========================================================
+
+    page_url:
+      pageInfo.page_url,
+
+    page_path:
+      pageInfo.page_path,
+
+    page_title:
+      pageInfo.page_title,
+
+    referrer:
+      pageInfo.referrer,
+
+    origin:
+      pageInfo.origin,
+
+
+    // ========================================================
+    // SESSION
+    // ========================================================
+
+    session_id:
+      sessionId,
+
+    timestamp:
+      firebase.firestore.FieldValue.serverTimestamp()
+  };
+}
+
+
+// ============================================================
+// 19. حفظ البيانات
+// ============================================================
+
+async function saveToFirestore(
+  visitorData
+) {
+
+  await db
+    .collection("visitors")
+    .add(visitorData);
+
+
+  sessionStorage.setItem(
+    "visitor_logged",
+    "true"
+  );
+}
+
+
+// ============================================================
+// 20. التسجيل الرئيسي
+// ============================================================
+
+async function logVisitor() {
+
+  // منع التسجيل المتكرر في نفس Session
+  if (
+    sessionStorage.getItem(
+      "visitor_logged"
+    )
+  ) {
+
+    console.log(
+      "Visitor already logged in this session."
+    );
+
+    return;
+  }
+
+
+  try {
+
+    console.log(
+      "Collecting visitor intelligence..."
+    );
+
+
+    const visitorData =
+      await collectVisitorData();
+
+
+    await saveToFirestore(
+      visitorData
+    );
+
+
+    console.log(
+      "SUCCESS: Visitor logged successfully!",
+      visitorData
+    );
+
+
+  } catch (error) {
+
+    console.error(
+      "Visitor logging failed:",
+      error
+    );
+
+
+    // محاولة IP احتياطية
+    await fallbackLogVisitor();
+  }
+}
+
+
+// ============================================================
+// 21. Fallback
+// ============================================================
+
+async function fallbackLogVisitor() {
+
+  try {
+
+    const ipData =
+      await fetchIPOnly();
+
+
+    const deviceInfo =
+      getDeviceInfo();
+
+
+    const localeInfo =
+      getLocaleInfo();
+
+
+    const networkInfo =
+      getNetworkInfo();
+
+
+    const pageInfo =
+      getPageInfo();
+
+
+    const visitorData = {
+
+      ip:
+        safeValue(
+          ipData.ip,
+          "غير معروف"
+        ),
+
+      country:
+        "غير معروف",
+
+      country_code:
+        "غير معروف",
+
+      region:
+        "غير معروف",
+
+      city:
+        "غير معروف",
+
+      postal:
+        "غير متوفر",
+
+      geo_latitude:
+        null,
+
+      geo_longitude:
+        null,
+
+      geo_timezone:
+        "غير معروف",
+
+      utc_offset:
+        "غير معروف",
+
+      asn:
+        "غير معروف",
+
+      organization:
+        "غير معروف",
+
+      isp:
+        "غير معروف",
+
+      geo_sources:
+        ipData.source,
+
+      geo_source_count:
+        0,
+
+      geo_consensus:
+        "Fallback",
+
+
+      device_type:
+        deviceInfo.device_type,
+
+      operating_system:
+        deviceInfo.operating_system,
+
+      browser:
+        deviceInfo.browser,
+
+      browser_version:
+        deviceInfo.browser_version,
+
+      user_agent:
+        deviceInfo.user_agent,
+
+
+      device_timezone:
+        localeInfo.device_timezone,
+
+      device_language:
+        localeInfo.device_language,
+
+      languages:
+        localeInfo.languages,
+
+
+      network_type:
+        networkInfo.network_type,
+
+      effective_network_type:
+        networkInfo.effective_network_type,
+
+      downlink_mbps:
+        networkInfo.downlink_mbps,
+
+      rtt_ms:
+        networkInfo.rtt_ms,
+
+      save_data:
+        networkInfo.save_data,
+
+
+      page_url:
+        pageInfo.page_url,
+
+      page_path:
+        pageInfo.page_path,
+
+      page_title:
+        pageInfo.page_title,
+
+      referrer:
+        pageInfo.referrer,
+
+
+      session_id:
+        getSessionId(),
+
+      timestamp:
+        firebase.firestore.FieldValue.serverTimestamp()
+    };
+
+
+    await saveToFirestore(
+      visitorData
+    );
+
+
+    console.log(
+      "Fallback visitor saved."
+    );
+
+
+  } catch (error) {
+
+    console.error(
+      "Fallback logging failed:",
+      error
+    );
+  }
+}
+
+
+// ============================================================
+// 22. مراقبة تغير الشبكة
+// ============================================================
+
+function attachNetworkListener() {
+
+  const connection =
+    navigator.connection ||
+    navigator.mozConnection ||
+    navigator.webkitConnection;
+
+
+  if (
+    connection &&
+    typeof connection.addEventListener ===
+      "function"
+  ) {
+
+    connection.addEventListener(
+      "change",
+      () => {
+
+        console.log(
+          "Network connection changed:",
+          getNetworkInfo()
+        );
+      }
+    );
+  }
+}
+
+
+// ============================================================
+// 23. بدء النظام
+// ============================================================
+
+attachNetworkListener();
+
+
+if (
+  document.readyState ===
+  "loading"
+) {
+
+  document.addEventListener(
+    "DOMContentLoaded",
+    logVisitor
+  );
+
+} else {
+
+  logVisitor();
+}
