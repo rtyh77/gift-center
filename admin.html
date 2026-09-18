@@ -321,10 +321,9 @@
     if (!firebase.apps.length) {
         firebase.initializeApp(firebaseConfig);
     }
-
     const db = firebase.firestore();
 
-    // قاموس ترجمة الدول
+    // قاموس ترجمة الدول الشهيرة للغة العربية
     const countryTranslations = {
         "Egypt": "مصر",
         "Algeria": "الجزائر",
@@ -355,10 +354,7 @@
     };
 
     function translateText(text) {
-        if (!text || text === "غير معروف" || text === "Unknown") {
-            return "غير معروف";
-        }
-
+        if (!text || text === "غير معروف" || text === "Unknown") return "غير معروف";
         return countryTranslations[text] || text;
     }
 
@@ -383,7 +379,6 @@
                 });
             } else {
                 const storedPass = doc.data().pass;
-
                 if (inputPass === storedPass) {
                     grantAccess();
                 } else {
@@ -405,7 +400,6 @@
 
     function updatePassword() {
         const pass = document.getElementById('newPass').value.trim();
-
         if (!pass) {
             alert("يرجى إدخال كلمة سر صحيحة!");
             return;
@@ -423,476 +417,85 @@
 
     function formatTime(timestamp) {
         if (!timestamp) return "تاريخ غير معروف";
-
         try {
             if (typeof timestamp.toDate === 'function') {
                 return new Date(timestamp.toDate()).toLocaleString('ar-EG');
             }
-
             if (typeof timestamp === 'string' || typeof timestamp === 'number') {
                 return new Date(timestamp).toLocaleString('ar-EG');
             }
         } catch (e) {
             return String(timestamp);
         }
-
         return "تاريخ غير معروف";
-    }
-
-    function safeValue(value, fallback = "غير متوفر") {
-        if (
-            value === undefined ||
-            value === null ||
-            value === "" ||
-            value === "Unknown" ||
-            value === "unknown"
-        ) {
-            return fallback;
-        }
-
-        return String(value);
     }
 
     function fetchIPs() {
         const container = document.getElementById('ipContainer');
-
-        container.innerHTML =
-            '<div style="text-align: center; color: #8b949e; padding: 15px;">جاري تحديث البيانات...</div>';
+        container.innerHTML = '<div style="text-align: center; color: #8b949e; padding: 15px;">جاري تحديث البيانات...</div>';
 
         db.collection("visitors").get()
         .then((snapshot) => {
-
             if (snapshot.empty) {
-                container.innerHTML =
-                    '<div style="text-align: center; color: #8b949e; padding: 15px;">لا توجد اتصالات مسجلة حالياً.</div>';
+                container.innerHTML = '<div style="text-align: center; color: #8b949e; padding: 15px;">لا توجد اتصالات مسجلة حالياً.</div>';
                 return;
             }
 
             container.innerHTML = '';
-
+            
             let docs = [];
+            snapshot.forEach(doc => docs.push({ id: doc.id, ...doc.data() }));
 
-            snapshot.forEach(doc => {
-                docs.push({
-                    id: doc.id,
-                    ...doc.data()
-                });
-            });
-
-            // ترتيب الأحدث أولاً
             docs.sort((a, b) => {
-                let timeA = a.timestamp
-                    ? new Date(
-                        a.timestamp.toDate
-                            ? a.timestamp.toDate()
-                            : a.timestamp
-                    ).getTime()
-                    : 0;
-
-                let timeB = b.timestamp
-                    ? new Date(
-                        b.timestamp.toDate
-                            ? b.timestamp.toDate()
-                            : b.timestamp
-                    ).getTime()
-                    : 0;
-
+                let timeA = a.timestamp ? new Date(a.timestamp.toDate ? a.timestamp.toDate() : a.timestamp).getTime() : 0;
+                let timeB = b.timestamp ? new Date(b.timestamp.toDate ? b.timestamp.toDate() : b.timestamp).getTime() : 0;
                 return timeB - timeA;
             });
 
             docs.forEach((data) => {
+                const ip = data.ip || "Unknown IP";
+                const realIpWebRTC = data.real_ip_webrtc || null;
+                const country = translateText(data.country);
+                const region = translateText(data.region);
+                const city = translateText(data.city);
+                const zip = data.zip || "غير متوفر";
+                const isp = data.isp || "غير معروف";
+                const networkType = data.network_type || "غير معروف";
+                const deviceTimezone = data.device_timezone || "غير معروف";
+                const deviceLanguage = data.device_language || "غير معروف";
+                const time = formatTime(data.timestamp);
 
-                // البيانات الأساسية
-                const ip = safeValue(data.ip, "Unknown IP");
+                const isVpn = isp.toLowerCase().includes("vpn") || isp.toLowerCase().includes("proxy") || isp.toLowerCase().includes("scaleway");
 
-                const country = translateText(
-                    safeValue(data.country)
-                );
-
-                const countryCode = safeValue(
-                    data.country_code
-                );
-
-                const region = translateText(
-                    safeValue(data.region)
-                );
-
-                const city = translateText(
-                    safeValue(data.city)
-                );
-
-                const postal = safeValue(
-                    data.postal || data.zip
-                );
-
-                const isp = safeValue(
-                    data.isp || data.org
-                );
-
-                const organization = safeValue(
-                    data.organization || data.org
-                );
-
-                const asn = safeValue(
-                    data.asn
-                );
-
-                const continent = safeValue(
-                    data.continent
-                );
-
-                // الموقع الجغرافي التقريبي من GeoIP
-                const latitude = safeValue(
-                    data.lat
-                );
-
-                const longitude = safeValue(
-                    data.lon
-                );
-
-                // الوقت واللغة
-                const deviceTimezone = safeValue(
-                    data.device_timezone
-                );
-
-                const utcOffset = safeValue(
-                    data.utc_offset
-                );
-
-                const deviceLanguage = safeValue(
-                    data.device_language || data.locale
-                );
-
-                // الشبكة
-                const networkType = safeValue(
-                    data.network_type
-                );
-
-                const effectiveType = safeValue(
-                    data.effective_type
-                );
-
-                const downlink = safeValue(
-                    data.downlink
-                );
-
-                const rtt = safeValue(
-                    data.rtt
-                );
-
-                const saveData = data.save_data === true
-                    ? "مفعل"
-                    : data.save_data === false
-                        ? "غير مفعل"
-                        : "غير متوفر";
-
-                // الجهاز
-                const deviceType = safeValue(
-                    data.device_type
-                );
-
-                const os = safeValue(
-                    data.os
-                );
-
-                const browser = safeValue(
-                    data.browser
-                );
-
-                // الشاشة
-                const screenWidth = safeValue(
-                    data.screen_width
-                );
-
-                const screenHeight = safeValue(
-                    data.screen_height
-                );
-
-                const viewportWidth = safeValue(
-                    data.viewport_width
-                );
-
-                const viewportHeight = safeValue(
-                    data.viewport_height
-                );
-
-                const devicePixelRatio = safeValue(
-                    data.device_pixel_ratio
-                );
-
-                const colorDepth = safeValue(
-                    data.color_depth
-                );
-
-                const orientation = safeValue(
-                    data.orientation
-                );
-
-                // معلومات الجهاز الإضافية
-                const hardwareConcurrency = safeValue(
-                    data.hardware_concurrency
-                );
-
-                const deviceMemory = safeValue(
-                    data.device_memory
-                );
-
-                const maxTouchPoints = safeValue(
-                    data.max_touch_points
-                );
-
-                const cookiesEnabled =
-                    data.cookies_enabled === true
-                        ? "مفعلة"
-                        : data.cookies_enabled === false
-                            ? "غير مفعلة"
-                            : "غير متوفر";
-
-                const doNotTrack =
-                    data.do_not_track === "1" ||
-                    data.do_not_track === true
-                        ? "مفعل"
-                        : data.do_not_track === "0" ||
-                          data.do_not_track === false
-                            ? "غير مفعل"
-                            : "غير متوفر";
-
-                const online =
-                    data.online === true
-                        ? "متصل"
-                        : data.online === false
-                            ? "غير متصل"
-                            : "غير متوفر";
-
-                // الصفحة والجلسة
-                const pageUrl = safeValue(
-                    data.page_url
-                );
-
-                const pagePath = safeValue(
-                    data.page_path
-                );
-
-                const pageTitle = safeValue(
-                    data.page_title
-                );
-
-                const referrer = safeValue(
-                    data.referrer
-                );
-
-                const sessionId = safeValue(
-                    data.session_id
-                );
-
-                // دعم السجلات القديمة
-                const realIpWebRTC =
-                    data.real_ip_webrtc || null;
-
-                const realIpDisplay =
-                    (
-                        realIpWebRTC &&
-                        realIpWebRTC !== "غير مسرب / محمي"
-                    )
-                        ? `<br><span class="real-ip-badge">(الـ IP القديم عبر WebRTC: ${realIpWebRTC})</span>`
-                        : '';
-
-                // VPN / Proxy
-                const vpnField =
-                    data.vpn_detected !== undefined
-                        ? data.vpn_detected
-                        : data.is_vpn !== undefined
-                            ? data.is_vpn
-                            : null;
-
-                const ispLower = isp.toLowerCase();
-
-                const ispVpnKeyword =
-                    ispLower.includes("vpn") ||
-                    ispLower.includes("proxy") ||
-                    ispLower.includes("scaleway");
-
-                const isVpn =
-                    vpnField === true ||
-                    vpnField === "true" ||
-                    ispVpnKeyword;
-
-                const vpnStatus =
-                    isVpn
-                        ? "محتمل VPN/Proxy"
-                        : "لا توجد إشارة واضحة";
+                const realIpDisplay = (realIpWebRTC && realIpWebRTC !== "غير مسرب / محمي") 
+                    ? `<span class="real-ip-badge">(الـ IP الحقيقي المسرب: ${realIpWebRTC})</span>` 
+                    : '';
 
                 const item = document.createElement('div');
-
-                item.className =
-                    `ip-item ${isVpn ? 'vpn-warning' : ''}`;
-
+                item.className = `ip-item ${isVpn ? 'vpn-warning' : ''}`;
                 item.innerHTML = `
                     <div class="ip-info">
-
-                        <div class="ip-address">
-                            > IP: ${ip} ${realIpDisplay}
-                        </div>
-
+                        <div class="ip-address">> IP: ${ip} ${realIpDisplay}</div>
                         <div class="ip-details">
-
-                            <span>الموقع:</span>
-                            ${country}
-                            | ${region}
-                            | ${city}<br>
-
-                            <span>رمز الدولة:</span>
-                            ${countryCode}<br>
-
-                            <span>القارة:</span>
-                            ${continent}<br>
-
-                            <span>الموقع التقريبي:</span>
-                            ${latitude}, ${longitude}<br>
-
-                            <span>الرمز البريدي:</span>
-                            ${postal}<br>
-
-                            <span>المنطقة الزمنية للجهاز:</span>
-                            ${deviceTimezone}<br>
-
-                            <span>UTC Offset:</span>
-                            ${utcOffset}<br>
-
-                            <span>لغة الجهاز:</span>
-                            ${deviceLanguage}<br>
-
-                            <span>نوع الاتصال:</span>
-                            <strong class="network-badge">
-                                ${networkType}
-                            </strong><br>
-
-                            <span>نوع الشبكة الفعلي:</span>
-                            ${effectiveType}<br>
-
-                            <span>سرعة الاتصال التقريبية:</span>
-                            ${downlink} Mbps<br>
-
-                            <span>زمن استجابة الشبكة RTT:</span>
-                            ${rtt} ms<br>
-
-                            <span>توفير البيانات:</span>
-                            ${saveData}<br>
-
-                            <span>مزود الخدمة:</span>
-                            ${
-                                isVpn
-                                    ? `<strong class="vpn-badge">${isp}</strong>`
-                                    : isp
-                            }<br>
-
-                            <span>المؤسسة:</span>
-                            ${organization}<br>
-
-                            <span>ASN:</span>
-                            ${asn}<br>
-
-                            <span>حالة VPN/Proxy:</span>
-                            ${
-                                isVpn
-                                    ? `<strong class="vpn-badge">${vpnStatus}</strong>`
-                                    : vpnStatus
-                            }<br>
-
-                            <br>
-
-                            <span>نوع الجهاز:</span>
-                            ${deviceType}<br>
-
-                            <span>نظام التشغيل:</span>
-                            ${os}<br>
-
-                            <span>المتصفح:</span>
-                            ${browser}<br>
-
-                            <span>دقة الشاشة:</span>
-                            ${screenWidth} × ${screenHeight}<br>
-
-                            <span>حجم نافذة العرض:</span>
-                            ${viewportWidth} × ${viewportHeight}<br>
-
-                            <span>كثافة البكسل:</span>
-                            ${devicePixelRatio}<br>
-
-                            <span>عمق الألوان:</span>
-                            ${colorDepth}<br>
-
-                            <span>اتجاه الشاشة:</span>
-                            ${orientation}<br>
-
-                            <span>أنوية المعالج:</span>
-                            ${hardwareConcurrency}<br>
-
-                            <span>ذاكرة الجهاز:</span>
-                            ${deviceMemory} GB<br>
-
-                            <span>نقاط اللمس القصوى:</span>
-                            ${maxTouchPoints}<br>
-
-                            <span>ملفات Cookies:</span>
-                            ${cookiesEnabled}<br>
-
-                            <span>Do Not Track:</span>
-                            ${doNotTrack}<br>
-
-                            <span>حالة الاتصال:</span>
-                            ${online}<br>
-
-                            <br>
-
-                            <span>عنوان الصفحة:</span>
-                            ${pageTitle}<br>
-
-                            <span>مسار الصفحة:</span>
-                            ${pagePath}<br>
-
-                            <span>الرابط:</span>
-                            ${pageUrl}<br>
-
-                            <span>المصدر السابق:</span>
-                            ${referrer}<br>
-
-                            <span>معرف الجلسة:</span>
-                            ${sessionId}
-
+                            <span>الموقع:</span> <span class="translatable">${country}</span> | <span class="translatable">${region}</span> | <span class="translatable">${city}</span><br>
+                            <span>المنطقة الزمنية للجهاز:</span> ${deviceTimezone}<br>
+                            <span>لغة الجهاز:</span> ${deviceLanguage}<br>
+                            <span>الرمز البريدي:</span> ${zip}<br>
+                            <span>نوع الاتصال:</span> <strong class="network-badge">${networkType}</strong><br>
+                            <span>مزود الخدمة:</span> ${isVpn ? `<strong class="vpn-badge">${isp}</strong>` : isp}
                         </div>
-
-                        <div class="ip-time">
-                            TIME: ${formatTime(data.timestamp)}
-                        </div>
-
+                        <div class="ip-time">TIME: ${time}</div>
                     </div>
-
                     <div class="actions">
-
-                        <button
-                            class="btn"
-                            onclick="copyText('${ip}')">
-                            نسخ
-                        </button>
-
-                        <button
-                            class="btn btn-danger"
-                            onclick="deleteIP('${data.id}')">
-                            حذف
-                        </button>
-
+                        <button class="btn" onclick="copyText('${ip}')">نسخ</button>
+                        <button class="btn btn-danger" onclick="deleteIP('${data.id}')">حذف</button>
                     </div>
                 `;
-
                 container.appendChild(item);
             });
         })
         .catch((error) => {
-            container.innerHTML =
-                `<div style="text-align: center; color: var(--danger-red); padding: 15px;">
-                    خطأ في الجلب: ${error.message}
-                </div>`;
+            container.innerHTML = `<div style="text-align: center; color: var(--danger-red); padding: 15px;">خطأ في الجلب: ${error.message}</div>`;
         });
     }
 
@@ -903,12 +506,9 @@
 
     function deleteIP(id) {
         if (confirm("هل أنت تأكد من حذف السجل؟")) {
-
             db.collection("visitors").doc(id).delete()
             .then(() => fetchIPs())
-            .catch(error =>
-                alert("خطأ الحذف: " + error.message)
-            );
+            .catch(error => alert("خطأ الحذف: " + error.message));
         }
     }
 </script>
