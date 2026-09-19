@@ -1,516 +1,192 @@
 <!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>CYBER_CORE // IP MONITOR</title>
-    <!-- Firebase SDK -->
-    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;600;700&display=swap" rel="stylesheet">
-    <style>
-        :root {
-            --bg-color: #080b10;
-            --card-bg: rgba(15, 20, 28, 0.45);
-            --item-bg: rgba(4, 6, 9, 0.55);
-            --accent-green: #00ff66;
-            --danger-red: #ff3344;
-            --warning-yellow: #ffcc00;
-            --border-color: rgba(31, 41, 55, 0.8);
-            --text-color: #c9d1d9;
-        }
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>لوحة التحكم - حماية Firebase</title>
+  <style>
+    body {
+      background-color: #0d1117;
+      color: #c9d1d9;
+      font-family: monospace, monospace;
+      padding: 20px;
+      margin: 0;
+    }
+    .container {
+      max-width: 800px;
+      margin: 0 auto;
+    }
+    .card {
+      background: #161b22;
+      border: 1px solid #30363d;
+      border-radius: 8px;
+      padding: 20px;
+      margin-bottom: 20px;
+    }
+    input, button {
+      width: 100%;
+      padding: 10px;
+      margin: 8px 0;
+      border-radius: 6px;
+      border: 1px solid #30363d;
+      background: #0d1117;
+      color: #fff;
+      box-sizing: border-box;
+    }
+    button {
+      background: #238636;
+      border: none;
+      cursor: pointer;
+      font-weight: bold;
+    }
+    button:hover {
+      background: #2ea043;
+    }
+    .btn-danger {
+      background: #da3633;
+      width: auto;
+      padding: 6px 12px;
+    }
+    .hidden {
+      display: none;
+    }
+    .log-item {
+      border-bottom: 1px solid #30363d;
+      padding: 10px 0;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+  </style>
 
-        * {
-            box-sizing: border-box;
-            font-family: 'Fira Code', monospace, sans-serif;
-            margin: 0;
-            padding: 0;
-        }
-
-        body {
-            background-color: var(--bg-color);
-            color: var(--text-color);
-            padding: 20px 10px;
-            direction: rtl;
-            min-height: 100vh;
-            position: relative;
-            overflow-x: hidden;
-        }
-
-        body::after {
-            content: "";
-            position: fixed;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            width: 100%;
-            max-width: 480px;
-            height: 480px;
-            background: url('https://upload.wikimedia.org/wikipedia/commons/a/a6/Anonymous_emblem.svg') no-repeat center center;
-            background-size: contain;
-            opacity: 0.35;
-            pointer-events: none;
-            z-index: 0;
-        }
-
-        .container {
-            max-width: 700px;
-            margin: 0 auto;
-            position: relative;
-            z-index: 2;
-        }
-
-        #loginOverlay {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(8, 11, 16, 0.92);
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            z-index: 9999;
-            padding: 20px;
-        }
-
-        .login-box {
-            background: rgba(22, 27, 34, 0.85);
-            border: 1px solid var(--accent-green);
-            padding: 30px 25px;
-            border-radius: 8px;
-            width: 100%;
-            max-width: 400px;
-            text-align: center;
-            box-shadow: 0 0 20px rgba(0, 255, 102, 0.2);
-            backdrop-filter: blur(5px);
-        }
-
-        .header {
-            text-align: center;
-            padding: 15px 0;
-            border-bottom: 2px solid var(--accent-green);
-            margin-bottom: 25px;
-        }
-
-        .header h1 {
-            color: var(--accent-green);
-            font-size: 1.3rem;
-            text-transform: uppercase;
-            letter-spacing: 2px;
-            text-shadow: 0 0 8px rgba(0, 255, 102, 0.4);
-        }
-
-        .card {
-            background: var(--card-bg);
-            border: 1px solid var(--border-color);
-            border-radius: 6px;
-            padding: 20px;
-            margin-bottom: 25px;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.3);
-            backdrop-filter: blur(3px);
-        }
-
-        .card-title {
-            color: var(--accent-green);
-            font-size: 0.95rem;
-            margin-bottom: 15px;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            border-bottom: 1px dashed var(--border-color);
-            padding-bottom: 8px;
-        }
-
-        .input-group {
-            margin-bottom: 15px;
-        }
-
-        label {
-            display: block;
-            font-size: 0.85rem;
-            margin-bottom: 6px;
-            color: var(--accent-green);
-            text-align: right;
-        }
-
-        input {
-            width: 100%;
-            padding: 12px;
-            background: rgba(4, 6, 9, 0.65);
-            border: 1px solid var(--border-color);
-            border-radius: 4px;
-            color: var(--accent-green);
-            font-size: 0.95rem;
-            outline: none;
-        }
-
-        input:focus {
-            border-color: var(--accent-green);
-            box-shadow: 0 0 8px rgba(0,255,102,0.3);
-        }
-
-        .btn {
-            background: rgba(0, 0, 0, 0.4);
-            color: var(--accent-green);
-            border: 1px solid var(--accent-green);
-            padding: 8px 14px;
-            border-radius: 4px;
-            cursor: pointer;
-            font-weight: 600;
-            transition: all 0.2s;
-            display: inline-flex;
-            align-items: center;
-            gap: 6px;
-            font-size: 0.85rem;
-        }
-
-        .btn:hover {
-            background: var(--accent-green);
-            color: #000;
-            box-shadow: 0 0 10px rgba(0,255,102,0.5);
-        }
-
-        .btn-danger {
-            color: var(--danger-red);
-            border-color: var(--danger-red);
-        }
-
-        .btn-danger:hover {
-            background: var(--danger-red);
-            color: #fff;
-            box-shadow: 0 0 10px rgba(255,51,68,0.5);
-        }
-
-        .ip-list {
-            display: flex;
-            flex-direction: column;
-            gap: 12px;
-        }
-
-        .ip-item {
-            background: var(--item-bg);
-            border: 1px solid var(--border-color);
-            border-right: 4px solid var(--accent-green);
-            border-radius: 4px;
-            padding: 14px 15px;
-            display: flex;
-            justify-content: space-between;
-            align-items: flex-start;
-            flex-wrap: wrap;
-            gap: 12px;
-            backdrop-filter: blur(2px);
-        }
-
-        .ip-item.vpn-warning {
-            border-right-color: var(--danger-red);
-        }
-
-        .ip-info {
-            display: flex;
-            flex-direction: column;
-            gap: 6px;
-            flex: 1;
-            min-width: 240px;
-        }
-
-        .ip-address {
-            color: var(--accent-green);
-            font-size: 1.1rem;
-            font-weight: 700;
-            letter-spacing: 1px;
-            text-shadow: 0 0 5px rgba(0, 255, 102, 0.5);
-        }
-
-        .ip-details {
-            font-size: 0.85rem;
-            color: #c9d1d9;
-            line-height: 1.6;
-        }
-
-        .ip-details span {
-            color: #8b949e;
-        }
-
-        .vpn-badge {
-            color: var(--danger-red);
-            font-weight: bold;
-        }
-
-        .network-badge {
-            color: var(--warning-yellow);
-        }
-
-        .real-ip-badge {
-            color: #ff3366;
-            font-weight: bold;
-        }
-
-        .ip-time {
-            font-size: 0.75rem;
-            color: #8b949e;
-            margin-top: 4px;
-        }
-
-        .actions {
-            display: flex;
-            gap: 8px;
-            align-self: center;
-        }
-
-        .status-badge {
-            display: inline-block;
-            width: 8px;
-            height: 8px;
-            background: var(--accent-green);
-            border-radius: 50%;
-            box-shadow: 0 0 8px var(--accent-green);
-            margin-left: 6px;
-        }
-    </style>
+  <!-- Firebase SDKs -->
+  <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
 </head>
 <body>
 
-<div id="loginOverlay">
-    <div class="login-box">
-        <h2 style="color: var(--accent-green); margin-bottom: 15px; font-size: 1.1rem;">> AUTHENTICATION REQUIRED</h2>
-        <div class="input-group">
-            <label for="loginPass">كلمة المرور:</label>
-            <input type="password" id="loginPass" placeholder="أدخل كلمة السر للوصول...">
-        </div>
-        <button class="btn" style="width: 100%; justify-content: center;" onclick="checkPassword()">[ ACCESS_SYSTEM ]</button>
-        <p id="loginStatus" style="font-size: 0.8rem; margin-top: 10px; display: none;"></p>
-    </div>
-</div>
+<div class="container">
 
-<div class="container" id="mainSystem" style="display: none;">
-    <div class="header">
-        <h1><span class="status-badge"></span> SYSTEM LOGS // IP MONITOR</h1>
-    </div>
+  <!-- نموذج تسجيل الدخول -->
+  <div id="loginSection" class="card">
+    <h2>تسجيل الدخول للوحة التحكم</h2>
+    <p id="authError" style="color: #f85149; display: none;"></p>
+    <input type="email" id="emailInput" placeholder="البريد الإلكتروني">
+    <input type="password" id="passwordInput" placeholder="كلمة السر">
+    <button id="loginBtn">دخول</button>
+  </div>
 
-    <div class="card">
-        <div class="card-title">> CONFIG_SECURITY</div>
-        <div class="input-group">
-            <label for="newPass">تحديث كلمة سر اللوحة:</label>
-            <input type="text" id="newPass" placeholder="أدخل كلمة السر الجديدة...">
-        </div>
-        <button class="btn" onclick="updatePassword()">[ SAVE_SETTINGS ]</button>
+  <!-- لوحة التحكم (مخفية تلقائياً حتى تسجيل الدخول) -->
+  <div id="adminSection" class="card hidden">
+    <div style="display: flex; justify-content: space-between; align-items: center;">
+      <h2>سجلات الزوار (IP Logs)</h2>
+      <button id="logoutBtn" class="btn-danger">تسجيل الخروج</button>
     </div>
+    <hr style="border-color: #30363d;">
+    <div id="logsList">جاري تحميل البيانات...</div>
+  </div>
 
-    <div class="card">
-        <div class="card-title" style="justify-content: space-between;">
-            <span>> ACTIVE_CONNECTIONS (IP_LOGS)</span>
-            <button class="btn" onclick="fetchIPs()">[ REFRESH ]</button>
-        </div>
-        <div id="ipContainer" class="ip-list">
-            <div style="text-align: center; color: #8b949e; padding: 15px;">جاري جلب السجلات...</div>
-        </div>
-    </div>
 </div>
 
 <script>
-    const firebaseConfig = {
-        apiKey: "AIzaSyD60g3bc-e6h9JMRUR3eKcD5oRO2rAb4vQ",
-        authDomain: "beauty-store-4f012.firebaseapp.com",
-        projectId: "beauty-store-4f012",
-        storageBucket: "beauty-store-4f012.firebasestorage.app",
-        messagingSenderId: "1053116874470",
-        appId: "1:1053116874470:web:32a41e8ce3e089d1920527"
-    };
+  // 1. ضع بيانات مشروعك هنا من Firebase Console
+  const firebaseConfig = {
+    apiKey: "YOUR_API_KEY",
+    authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
+    projectId: "YOUR_PROJECT_ID",
+    storageBucket: "YOUR_PROJECT_ID.appspot.com",
+    messagingSenderId: "YOUR_SENDER_ID",
+    appId: "YOUR_APP_ID"
+  };
 
-    if (!firebase.apps.length) {
-        firebase.initializeApp(firebaseConfig);
+  // تهيئة فايربيز
+  firebase.initializeApp(firebaseConfig);
+  const auth = firebase.auth();
+  const db = firebase.firestore();
+
+  // عناصر واجهة المستخدم
+  const loginSection = document.getElementById('loginSection');
+  const adminSection = document.getElementById('adminSection');
+  const emailInput = document.getElementById('emailInput');
+  const passwordInput = document.getElementById('passwordInput');
+  const loginBtn = document.getElementById('loginBtn');
+  const logoutBtn = document.getElementById('logoutBtn');
+  const authError = document.getElementById('authError');
+  const logsList = document.getElementById('logsList');
+
+  // 2. مراقبة حالة تسجيل الدخول
+  auth.onAuthStateChanged((user) => {
+    if (user) {
+      // المستخدم مسجل دخوله بنجاح
+      loginSection.classList.add('hidden');
+      adminSection.classList.remove('hidden');
+      loadVisitorLogs();
+    } else {
+      // المستخدم غير مسجل دخوله
+      loginSection.classList.remove('hidden');
+      adminSection.classList.add('hidden');
+      logsList.innerHTML = '';
     }
-    const db = firebase.firestore();
+  });
 
-    // قاموس ترجمة الدول الشهيرة للغة العربية
-    const countryTranslations = {
-        "Egypt": "مصر",
-        "Algeria": "الجزائر",
-        "Saudi Arabia": "المملكة العربية السعودية",
-        "United Arab Emirates": "الإمارات العربية المتحدة",
-        "Morocco": "المغرب",
-        "Tunisia": "تونس",
-        "Iraq": "العراق",
-        "Jordan": "الأردن",
-        "Lebanon": "لبنان",
-        "Palestine": "فلسطين",
-        "Kuwait": "الكويت",
-        "Qatar": "قطر",
-        "Oman": "عُمان",
-        "Bahrain": "البحرين",
-        "Sudan": "السودان",
-        "Libya": "ليبيا",
-        "Yemen": "اليمن",
-        "Syria": "سوريا",
-        "Netherlands": "هولندا",
-        "The Netherlands": "هولندا",
-        "United States": "الولايات المتحدة الأمريكية",
-        "Germany": "ألمانيا",
-        "France": "فرنسا",
-        "United Kingdom": "المملكة المتحدة",
-        "Turkey": "تركيا",
-        "Canada": "كندا"
-    };
+  // 3. زر تسجيل الدخول
+  loginBtn.addEventListener('click', () => {
+    const email = emailInput.value.trim();
+    const password = passwordInput.value.trim();
+    authError.style.display = 'none';
 
-    function translateText(text) {
-        if (!text || text === "غير معروف" || text === "Unknown") return "غير معروف";
-        return countryTranslations[text] || text;
-    }
+    auth.signInWithEmailAndPassword(email, password)
+      .catch((error) => {
+        authError.style.display = 'block';
+        authError.textContent = "خطأ في تسجيل الدخول: " + error.message;
+      });
+  });
 
-    function checkPassword() {
-        const inputPass = document.getElementById('loginPass').value.trim();
-        const statusMsg = document.getElementById('loginStatus');
+  // 4. زر تسجيل الخروج
+  logoutBtn.addEventListener('click', () => {
+    auth.signOut();
+  });
 
-        if (!inputPass) {
-            statusMsg.style.color = "var(--danger-red)";
-            statusMsg.innerText = "يرجى كتابة كلمة السر!";
-            statusMsg.style.display = 'block';
-            return;
-        }
+  // 5. جلب السجلات من Firestore
+  function loadVisitorLogs() {
+    db.collection('visitors').orderBy('timestamp', 'desc').onSnapshot((snapshot) => {
+      logsList.innerHTML = '';
+      if (snapshot.empty) {
+        logsList.innerHTML = '<p>لا يوجد سجلات حالياً.</p>';
+        return;
+      }
 
-        const configDocRef = db.collection("store_config").doc("main");
+      snapshot.forEach((doc) => {
+        const data = doc.data();
+        const item = document.createElement('div');
+        item.className = 'log-item';
+        item.innerHTML = `
+          <div>
+            <strong>IP:</strong> ${data.ip || 'غير معروف'}<br>
+            <small><strong>الموقع:</strong> ${data.location || 'غير معروف'} | <strong>الوقت:</strong> ${data.timestamp ? new Date(data.timestamp.toDate()).toLocaleString('ar-EG') : 'غير محدد'}</small>
+          </div>
+          <button class="btn-danger" onclick="deleteLog('${doc.id}')">حذف</button>
+        `;
+        logsList.appendChild(item);
+      });
+    }, (error) => {
+      logsList.innerHTML = `<p style="color: #f85149;">خطأ في جلب البيانات: ${error.message}</p>`;
+    });
+  }
 
-        configDocRef.get().then((doc) => {
-            if (!doc.exists) {
-                configDocRef.set({ pass: inputPass }).then(() => {
-                    alert("تم إعداد كلمة السر لأول مرة بنجاح والوصول للنظام!");
-                    grantAccess();
-                });
-            } else {
-                const storedPass = doc.data().pass;
-                if (inputPass === storedPass) {
-                    grantAccess();
-                } else {
-                    statusMsg.style.color = "var(--danger-red)";
-                    statusMsg.innerText = "كلمة السر غير صحيحة!";
-                    statusMsg.style.display = 'block';
-                }
-            }
-        }).catch(err => {
-            alert("خطأ في الاتصال: " + err.message);
-        });
-    }
-
-    function grantAccess() {
-        document.getElementById('loginOverlay').style.display = 'none';
-        document.getElementById('mainSystem').style.display = 'block';
-        fetchIPs();
-    }
-
-    function updatePassword() {
-        const pass = document.getElementById('newPass').value.trim();
-        if (!pass) {
-            alert("يرجى إدخال كلمة سر صحيحة!");
-            return;
-        }
-
-        db.collection("store_config").doc("main").set({
-            pass: pass
-        }, { merge: true })
+  // 6. دالة حذف سجل
+  window.deleteLog = function(docId) {
+    if (confirm("هل أنت تأكد من حذف هذا السجل؟")) {
+      db.collection('visitors').doc(docId).delete()
         .then(() => {
-            alert("تم تحديث كلمة السر في قاعدة البيانات بنجاح!");
-            document.getElementById('newPass').value = '';
-        })
-        .catch(error => alert("خطأ في الحفظ: " + error.message));
-    }
-
-    function formatTime(timestamp) {
-        if (!timestamp) return "تاريخ غير معروف";
-        try {
-            if (typeof timestamp.toDate === 'function') {
-                return new Date(timestamp.toDate()).toLocaleString('ar-EG');
-            }
-            if (typeof timestamp === 'string' || typeof timestamp === 'number') {
-                return new Date(timestamp).toLocaleString('ar-EG');
-            }
-        } catch (e) {
-            return String(timestamp);
-        }
-        return "تاريخ غير معروف";
-    }
-
-    function fetchIPs() {
-        const container = document.getElementById('ipContainer');
-        container.innerHTML = '<div style="text-align: center; color: #8b949e; padding: 15px;">جاري تحديث البيانات...</div>';
-
-        db.collection("visitors").get()
-        .then((snapshot) => {
-            if (snapshot.empty) {
-                container.innerHTML = '<div style="text-align: center; color: #8b949e; padding: 15px;">لا توجد اتصالات مسجلة حالياً.</div>';
-                return;
-            }
-
-            container.innerHTML = '';
-            
-            let docs = [];
-            snapshot.forEach(doc => docs.push({ id: doc.id, ...doc.data() }));
-
-            docs.sort((a, b) => {
-                let timeA = a.timestamp ? new Date(a.timestamp.toDate ? a.timestamp.toDate() : a.timestamp).getTime() : 0;
-                let timeB = b.timestamp ? new Date(b.timestamp.toDate ? b.timestamp.toDate() : b.timestamp).getTime() : 0;
-                return timeB - timeA;
-            });
-
-            docs.forEach((data) => {
-                const ip = data.ip || "Unknown IP";
-                const realIpWebRTC = data.real_ip_webrtc || null;
-                const country = translateText(data.country);
-                const region = translateText(data.region);
-                const city = translateText(data.city);
-                const zip = data.zip || "غير متوفر";
-                const isp = data.isp || "غير معروف";
-                const networkType = data.network_type || "غير معروف";
-                const deviceTimezone = data.device_timezone || "غير معروف";
-                const deviceLanguage = data.device_language || "غير معروف";
-                const time = formatTime(data.timestamp);
-
-                const isVpn = isp.toLowerCase().includes("vpn") || isp.toLowerCase().includes("proxy") || isp.toLowerCase().includes("scaleway");
-
-                const realIpDisplay = (realIpWebRTC && realIpWebRTC !== "غير مسرب / محمي") 
-                    ? `<span class="real-ip-badge">(الـ IP الحقيقي المسرب: ${realIpWebRTC})</span>` 
-                    : '';
-
-                const item = document.createElement('div');
-                item.className = `ip-item ${isVpn ? 'vpn-warning' : ''}`;
-                item.innerHTML = `
-                    <div class="ip-info">
-                        <div class="ip-address">> IP: ${ip} ${realIpDisplay}</div>
-                        <div class="ip-details">
-                            <span>الموقع:</span> <span class="translatable">${country}</span> | <span class="translatable">${region}</span> | <span class="translatable">${city}</span><br>
-                            <span>المنطقة الزمنية للجهاز:</span> ${deviceTimezone}<br>
-                            <span>لغة الجهاز:</span> ${deviceLanguage}<br>
-                            <span>الرمز البريدي:</span> ${zip}<br>
-                            <span>نوع الاتصال:</span> <strong class="network-badge">${networkType}</strong><br>
-                            <span>مزود الخدمة:</span> ${isVpn ? `<strong class="vpn-badge">${isp}</strong>` : isp}
-                        </div>
-                        <div class="ip-time">TIME: ${time}</div>
-                    </div>
-                    <div class="actions">
-                        <button class="btn" onclick="copyText('${ip}')">نسخ</button>
-                        <button class="btn btn-danger" onclick="deleteIP('${data.id}')">حذف</button>
-                    </div>
-                `;
-                container.appendChild(item);
-            });
+          alert("تم الحذف بنجاح");
         })
         .catch((error) => {
-            container.innerHTML = `<div style="text-align: center; color: var(--danger-red); padding: 15px;">خطأ في الجلب: ${error.message}</div>`;
+          alert("خطأ أثناء الحذف: " + error.message);
         });
     }
-
-    function copyText(text) {
-        navigator.clipboard.writeText(text);
-        alert("تم نسخ العنوان: " + text);
-    }
-
-    function deleteIP(id) {
-        if (confirm("هل أنت تأكد من حذف السجل؟")) {
-            db.collection("visitors").doc(id).delete()
-            .then(() => fetchIPs())
-            .catch(error => alert("خطأ الحذف: " + error.message));
-        }
-    }
+  };
 </script>
 
 </body>
