@@ -3,17 +3,17 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>لوحة التحكم - حماية Firebase</title>
+  <title>لوحة التحكم الأمنية - إدارة السجلات</title>
   <style>
     body {
       background-color: #0d1117;
       color: #c9d1d9;
-      font-family: monospace, monospace;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
       padding: 20px;
       margin: 0;
     }
     .container {
-      max-width: 800px;
+      max-width: 900px;
       margin: 0 auto;
     }
     .card {
@@ -22,22 +22,29 @@
       border-radius: 8px;
       padding: 20px;
       margin-bottom: 20px;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+    }
+    h2 {
+      margin-top: 0;
+      color: #58a6ff;
     }
     input, button {
       width: 100%;
-      padding: 10px;
+      padding: 12px;
       margin: 8px 0;
       border-radius: 6px;
       border: 1px solid #30363d;
       background: #0d1117;
       color: #fff;
       box-sizing: border-box;
+      font-size: 14px;
     }
     button {
       background: #238636;
       border: none;
       cursor: pointer;
       font-weight: bold;
+      transition: background 0.2s;
     }
     button:hover {
       background: #2ea043;
@@ -45,21 +52,44 @@
     .btn-danger {
       background: #da3633;
       width: auto;
-      padding: 6px 12px;
+      padding: 6px 14px;
+      margin: 0;
+    }
+    .btn-danger:hover {
+      background: #f85149;
     }
     .hidden {
       display: none;
     }
     .log-item {
-      border-bottom: 1px solid #30363d;
-      padding: 10px 0;
+      background: #0d1117;
+      border: 1px solid #30363d;
+      border-radius: 6px;
+      padding: 15px;
+      margin-bottom: 12px;
       display: flex;
       justify-content: space-between;
       align-items: center;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+    .log-details {
+      line-height: 1.6;
+      font-size: 13px;
+    }
+    .ip-tag {
+      color: #3fb950;
+      font-family: monospace;
+      font-weight: bold;
+      font-size: 15px;
+    }
+    .alert-tag {
+      color: #f85149;
+      font-weight: bold;
     }
   </style>
 
-  <!-- Firebase SDKs -->
+  <!-- Firebase SDKs (Compat Version) -->
   <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
@@ -68,7 +98,7 @@
 
 <div class="container">
 
-  <!-- نموذج تسجيل الدخول -->
+  <!-- قسم تسجيل الدخول -->
   <div id="loginSection" class="card">
     <h2>تسجيل الدخول للوحة التحكم</h2>
     <p id="authError" style="color: #f85149; display: none;"></p>
@@ -77,35 +107,35 @@
     <button id="loginBtn">دخول</button>
   </div>
 
-  <!-- لوحة التحكم (مخفية تلقائياً حتى تسجيل الدخول) -->
+  <!-- لوحة التحكم المحمية -->
   <div id="adminSection" class="card hidden">
-    <div style="display: flex; justify-content: space-between; align-items: center;">
-      <h2>سجلات الزوار (IP Logs)</h2>
+    <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
+      <h2>سجلات الزوار النشطة (IP Logs)</h2>
       <button id="logoutBtn" class="btn-danger">تسجيل الخروج</button>
     </div>
-    <hr style="border-color: #30363d;">
+    <hr style="border-color: #30363d; margin: 15px 0;">
     <div id="logsList">جاري تحميل البيانات...</div>
   </div>
 
 </div>
 
 <script>
-  // 1. ضع بيانات مشروعك هنا من Firebase Console
+  // بيانات تهيئة Firebase الخاصة بمشروعك
   const firebaseConfig = {
-    apiKey: "YOUR_API_KEY",
-    authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
-    projectId: "YOUR_PROJECT_ID",
-    storageBucket: "YOUR_PROJECT_ID.appspot.com",
-    messagingSenderId: "YOUR_SENDER_ID",
-    appId: "YOUR_APP_ID"
+    apiKey: "AIzaSyD60g3bc-e6h9JMRUR3eKcD5oRO2rAb4vQ",
+    authDomain: "beauty-store-4f012.firebaseapp.com",
+    projectId: "beauty-store-4f012",
+    storageBucket: "beauty-store-4f012.firebasestorage.app",
+    messagingSenderId: "1053116874470",
+    appId: "1:1053116874470:web:32a41e8ce3e089d1920527"
   };
 
-  // تهيئة فايربيز
+  // تهيئة Firebase
   firebase.initializeApp(firebaseConfig);
   const auth = firebase.auth();
   const db = firebase.firestore();
 
-  // عناصر واجهة المستخدم
+  // عناصر الواجهة
   const loginSection = document.getElementById('loginSection');
   const adminSection = document.getElementById('adminSection');
   const emailInput = document.getElementById('emailInput');
@@ -115,26 +145,30 @@
   const authError = document.getElementById('authError');
   const logsList = document.getElementById('logsList');
 
-  // 2. مراقبة حالة تسجيل الدخول
+  // مراقبة حالة تسجيل الدخول تلقائياً
   auth.onAuthStateChanged((user) => {
     if (user) {
-      // المستخدم مسجل دخوله بنجاح
       loginSection.classList.add('hidden');
       adminSection.classList.remove('hidden');
       loadVisitorLogs();
     } else {
-      // المستخدم غير مسجل دخوله
       loginSection.classList.remove('hidden');
       adminSection.classList.add('hidden');
       logsList.innerHTML = '';
     }
   });
 
-  // 3. زر تسجيل الدخول
+  // تنفيذ تسجيل الدخول
   loginBtn.addEventListener('click', () => {
     const email = emailInput.value.trim();
     const password = passwordInput.value.trim();
     authError.style.display = 'none';
+
+    if (!email || !password) {
+      authError.style.display = 'block';
+      authError.textContent = "يرجى إدخال البريد الإلكتروني وكلمة السر.";
+      return;
+    }
 
     auth.signInWithEmailAndPassword(email, password)
       .catch((error) => {
@@ -143,28 +177,34 @@
       });
   });
 
-  // 4. زر تسجيل الخروج
+  // تسجيل الخروج
   logoutBtn.addEventListener('click', () => {
     auth.signOut();
   });
 
-  // 5. جلب السجلات من Firestore
+  // جلب وقراءة السجلات
   function loadVisitorLogs() {
     db.collection('visitors').orderBy('timestamp', 'desc').onSnapshot((snapshot) => {
       logsList.innerHTML = '';
       if (snapshot.empty) {
-        logsList.innerHTML = '<p>لا يوجد سجلات حالياً.</p>';
+        logsList.innerHTML = '<p style="color: #8b949e;">لا يوجد سجلات حالياً.</p>';
         return;
       }
 
       snapshot.forEach((doc) => {
         const data = doc.data();
+        const dateFormatted = data.timestamp ? new Date(data.timestamp.toDate()).toLocaleString('ar-EG') : 'غير محدد';
+        
         const item = document.createElement('div');
         item.className = 'log-item';
         item.innerHTML = `
-          <div>
-            <strong>IP:</strong> ${data.ip || 'غير معروف'}<br>
-            <small><strong>الموقع:</strong> ${data.location || 'غير معروف'} | <strong>الوقت:</strong> ${data.timestamp ? new Date(data.timestamp.toDate()).toLocaleString('ar-EG') : 'غير محدد'}</small>
+          <div class="log-details">
+            <div><span class="ip-tag">IP: ${data.ip || 'غير معروف'}</span></div>
+            ${data.realIp ? `<div><strong>IP الحقيقي (المسرب):</strong> ${data.realIp}</div>` : ''}
+            <div><strong>الموقع:</strong> ${data.location || 'غير محدد'}</div>
+            <div><strong>نوع الاتصال:</strong> ${data.connectionType || 'غير محدد'}</div>
+            ${data.vpnDetected ? `<div class="alert-tag">⚠️ تم كشف استخدام VPN/Proxy</div>` : ''}
+            <div><small style="color: #8b949e;">الوقت: ${dateFormatted}</small></div>
           </div>
           <button class="btn-danger" onclick="deleteLog('${doc.id}')">حذف</button>
         `;
@@ -175,12 +215,12 @@
     });
   }
 
-  // 6. دالة حذف سجل
+  // حذف سجل محدد
   window.deleteLog = function(docId) {
     if (confirm("هل أنت تأكد من حذف هذا السجل؟")) {
       db.collection('visitors').doc(docId).delete()
         .then(() => {
-          alert("تم الحذف بنجاح");
+          // تم الحذف بنجاح
         })
         .catch((error) => {
           alert("خطأ أثناء الحذف: " + error.message);
