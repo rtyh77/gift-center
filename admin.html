@@ -1,241 +1,485 @@
 <!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>لوحة التحكم الأمنية - إدارة السجلات</title>
-  <style>
-    body {
-      background-color: #0d1117;
-      color: #c9d1d9;
-      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-      padding: 20px;
-      margin: 0;
-    }
-    .container {
-      max-width: 900px;
-      margin: 0 auto;
-    }
-    .card {
-      background: #161b22;
-      border: 1px solid #30363d;
-      border-radius: 8px;
-      padding: 20px;
-      margin-bottom: 20px;
-      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
-    }
-    h2 {
-      margin-top: 0;
-      color: #58a6ff;
-    }
-    input, button {
-      width: 100%;
-      padding: 12px;
-      margin: 8px 0;
-      border-radius: 6px;
-      border: 1px solid #30363d;
-      background: #0d1117;
-      color: #fff;
-      box-sizing: border-box;
-      font-size: 14px;
-    }
-    button {
-      background: #238636;
-      border: none;
-      cursor: pointer;
-      font-weight: bold;
-      transition: background 0.2s;
-    }
-    button:hover {
-      background: #2ea043;
-    }
-    .google-btn {
-      background-color: #4285f4;
-      color: #ffffff;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 10px;
-      font-size: 15px;
-    }
-    .google-btn:hover {
-      background-color: #357ae8;
-    }
-    .btn-danger {
-      background: #da3633;
-      width: auto;
-      padding: 6px 14px;
-      margin: 0;
-    }
-    .btn-danger:hover {
-      background: #f85149;
-    }
-    .hidden {
-      display: none;
-    }
-    .log-item {
-      background: #0d1117;
-      border: 1px solid #30363d;
-      border-radius: 6px;
-      padding: 15px;
-      margin-bottom: 12px;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      flex-wrap: wrap;
-      gap: 10px;
-    }
-    .log-details {
-      line-height: 1.6;
-      font-size: 13px;
-    }
-    .ip-tag {
-      color: #3fb950;
-      font-family: monospace;
-      font-weight: bold;
-      font-size: 15px;
-    }
-    .alert-tag {
-      color: #f85149;
-      font-weight: bold;
-    }
-  </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CYBER_CORE // IP MONITOR</title>
+    <!-- Firebase SDK (Compat v9/v10 for Web) -->
+    <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-auth-compat.js"></script>
+    
+    <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-color: #080b10;
+            --card-bg: rgba(15, 20, 28, 0.45);
+            --item-bg: rgba(4, 6, 9, 0.55);
+            --accent-green: #00ff66;
+            --danger-red: #ff3344;
+            --warning-yellow: #ffcc00;
+            --border-color: rgba(31, 41, 55, 0.8);
+            --text-color: #c9d1d9;
+        }
 
-  <!-- Firebase SDKs (Compat Version) -->
-  <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
+        * {
+            box-sizing: border-box;
+            font-family: 'Fira Code', monospace, sans-serif;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            padding: 20px 10px;
+            direction: rtl;
+            min-height: 100vh;
+            position: relative;
+            overflow-x: hidden;
+        }
+
+        body::after {
+            content: "";
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 100%;
+            max-width: 480px;
+            height: 480px;
+            background: url('https://upload.wikimedia.org/wikipedia/commons/a/a6/Anonymous_emblem.svg') no-repeat center center;
+            background-size: contain;
+            opacity: 0.35;
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        .container {
+            max-width: 750px;
+            margin: 0 auto;
+            position: relative;
+            z-index: 2;
+        }
+
+        #loginOverlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(8, 11, 16, 0.95);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 9999;
+            padding: 20px;
+        }
+
+        .login-box {
+            background: rgba(22, 27, 34, 0.9);
+            border: 1px solid var(--accent-green);
+            padding: 35px 25px;
+            border-radius: 8px;
+            width: 100%;
+            max-width: 420px;
+            text-align: center;
+            box-shadow: 0 0 25px rgba(0, 255, 102, 0.25);
+            backdrop-filter: blur(8px);
+        }
+
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 15px 0;
+            border-bottom: 2px solid var(--accent-green);
+            margin-bottom: 25px;
+        }
+
+        .header h1 {
+            color: var(--accent-green);
+            font-size: 1.2rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            text-shadow: 0 0 8px rgba(0, 255, 102, 0.4);
+        }
+
+        .card {
+            background: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            padding: 20px;
+            margin-bottom: 25px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+            backdrop-filter: blur(3px);
+        }
+
+        .card-title {
+            color: var(--accent-green);
+            font-size: 0.95rem;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            border-bottom: 1px dashed var(--border-color);
+            padding-bottom: 8px;
+        }
+
+        .btn {
+            background: rgba(0, 0, 0, 0.4);
+            color: var(--accent-green);
+            border: 1px solid var(--accent-green);
+            padding: 8px 14px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.2s;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+            font-size: 0.85rem;
+        }
+
+        .btn:hover {
+            background: var(--accent-green);
+            color: #000;
+            box-shadow: 0 0 10px rgba(0,255,102,0.5);
+        }
+
+        .btn-google {
+            background: #ffffff;
+            color: #333333;
+            border: 1px solid #cccccc;
+            width: 100%;
+            padding: 12px;
+            font-size: 0.95rem;
+            font-weight: bold;
+            margin-top: 15px;
+            border-radius: 4px;
+        }
+
+        .btn-google:hover {
+            background: #f1f1f1;
+            color: #000;
+            box-shadow: 0 0 10px rgba(255,255,255,0.4);
+        }
+
+        .btn-danger {
+            color: var(--danger-red);
+            border-color: var(--danger-red);
+        }
+
+        .btn-danger:hover {
+            background: var(--danger-red);
+            color: #fff;
+            box-shadow: 0 0 10px rgba(255,51,68,0.5);
+        }
+
+        .ip-list {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .ip-item {
+            background: var(--item-bg);
+            border: 1px solid var(--border-color);
+            border-right: 4px solid var(--accent-green);
+            border-radius: 4px;
+            padding: 14px 15px;
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            flex-wrap: wrap;
+            gap: 12px;
+            backdrop-filter: blur(2px);
+        }
+
+        .ip-item.vpn-warning {
+            border-right-color: var(--danger-red);
+        }
+
+        .ip-info {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            flex: 1;
+            min-width: 240px;
+        }
+
+        .ip-address {
+            color: var(--accent-green);
+            font-size: 1.05rem;
+            font-weight: 700;
+            letter-spacing: 1px;
+            text-shadow: 0 0 5px rgba(0, 255, 102, 0.5);
+        }
+
+        .ip-details {
+            font-size: 0.85rem;
+            color: #c9d1d9;
+            line-height: 1.6;
+        }
+
+        .ip-details span {
+            color: #8b949e;
+        }
+
+        .vpn-badge {
+            color: var(--danger-red);
+            font-weight: bold;
+        }
+
+        .network-badge {
+            color: var(--warning-yellow);
+        }
+
+        .real-ip-badge {
+            color: #ff3366;
+            font-weight: bold;
+        }
+
+        .ip-time {
+            font-size: 0.75rem;
+            color: #8b949e;
+            margin-top: 4px;
+        }
+
+        .actions {
+            display: flex;
+            gap: 8px;
+            align-self: center;
+        }
+
+        .status-badge {
+            display: inline-block;
+            width: 8px;
+            height: 8px;
+            background: var(--accent-green);
+            border-radius: 50%;
+            box-shadow: 0 0 8px var(--accent-green);
+            margin-left: 6px;
+        }
+    </style>
 </head>
 <body>
 
-<div class="container">
-
-  <!-- قسم تسجيل الدخول -->
-  <div id="loginSection" class="card" style="text-align: center;">
-    <h2>تسجيل الدخول للوحة التحكم</h2>
-    <p id="authError" style="color: #f85149; display: none;"></p>
-    <button id="googleLoginBtn" class="google-btn">
-      <svg width="18" height="18" viewBox="0 0 18 18">
-        <path fill="#4285F4" d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844c-.209 1.125-.843 2.078-1.796 2.717v2.259h2.908c1.702-1.567 2.684-3.874 2.684-6.617z"/>
-        <path fill="#34A853" d="M9 18c2.43 0 4.467-.806 5.956-2.18l-2.908-2.259c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332A8.997 8.997 0 0 0 9 18z"/>
-        <path fill="#FBBC05" d="M3.964 10.71A5.41 5.41 0 0 1 3.682 9c0-.593.102-1.17.282-1.71V4.958H.957A8.996 8.996 0 0 0 0 9c0 1.452.348 2.827.957 4.042l3.007-2.332z"/>
-        <path fill="#EA4335" d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0 A8.997 8.997 0 0 0 .957 4.958L3.964 7.29C4.672 5.163 6.656 3.58 9 3.58z"/>
-      </svg>
-      تسجيل الدخول باستخدام جوجل
-    </button>
-  </div>
-
-  <!-- لوحة التحكم المحمية -->
-  <div id="adminSection" class="card hidden">
-    <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
-      <h2>سجلات الزوار النشطة (IP Logs)</h2>
-      <button id="logoutBtn" class="btn-danger">تسجيل الخروج</button>
+<!-- شاشة تسجيل الدخول -->
+<div id="loginOverlay">
+    <div class="login-box">
+        <h2 style="color: var(--accent-green); margin-bottom: 10px; font-size: 1.1rem;">> AUTHENTICATION REQUIRED</h2>
+        <p style="color: #8b949e; font-size: 0.85rem; margin-bottom: 15px;">يرجى تسجيل الدخول بحساب الأدمن للوصول للنظام</p>
+        
+        <button class="btn btn-google" onclick="loginWithGoogle()">
+            <svg width="18" height="18" viewBox="0 0 24 24" style="vertical-align: middle; margin-left: 8px;">
+                <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+                <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+                <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"/>
+                <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"/>
+            </svg>
+            تسجيل الدخول الى هاذا نظام꧁Yahya ꧂
+        </button>
+        <p id="loginStatus" style="font-size: 0.8rem; margin-top: 15px; display: none;"></p>
     </div>
-    <hr style="border-color: #30363d; margin: 15px 0;">
-    <div id="logsList">جاري تحميل البيانات...</div>
-  </div>
+</div>
 
+<!-- لوحة التحكم الرئيسية -->
+<div class="container" id="mainSystem" style="display: none;">
+    <div class="header">
+        <h1><span class="status-badge"></span> SYSTEM LOGS // IP MONITOR</h1>
+        <button class="btn btn-danger" onclick="logout()">[ LOGOUT ]</button>
+    </div>
+
+    <div class="card">
+        <div class="card-title">
+            <span>> ACTIVE_CONNECTIONS (سجلات IP)</span>
+            <button class="btn" onclick="fetchIPs()">[ REFRESH ]</button>
+        </div>
+        <div id="ipContainer" class="ip-list">
+            <div style="text-align: center; color: #8b949e; padding: 15px;">جاري جلب السجلات...</div>
+        </div>
+    </div>
 </div>
 
 <script>
-  // بيانات تهيئة Firebase الخاصة بمشروعك
-  const firebaseConfig = {
-    apiKey: "AIzaSyD60g3bc-e6h9JMRUR3eKcD5oRO2rAb4vQ",
-    authDomain: "beauty-store-4f012.firebaseapp.com",
-    projectId: "beauty-store-4f012",
-    storageBucket: "beauty-store-4f012.firebasestorage.app",
-    messagingSenderId: "1053116874470",
-    appId: "1:1053116874470:web:32a41e8ce3e089d1920527"
-  };
+    const firebaseConfig = {
+        apiKey: "AIzaSyD60g3bc-e6h9JMRUR3eKcD5oRO2rAb4vQ",
+        authDomain: "beauty-store-4f012.firebaseapp.com",
+        projectId: "beauty-store-4f012",
+        storageBucket: "beauty-store-4f012.firebasestorage.app",
+        messagingSenderId: "1053116874470",
+        appId: "1:1053116874470:web:32a41e8ce3e089d1920527"
+    };
 
-  // تهيئة Firebase
-  firebase.initializeApp(firebaseConfig);
-  const auth = firebase.auth();
-  const db = firebase.firestore();
-
-  // عناصر الواجهة
-  const loginSection = document.getElementById('loginSection');
-  const adminSection = document.getElementById('adminSection');
-  const googleLoginBtn = document.getElementById('googleLoginBtn');
-  const logoutBtn = document.getElementById('logoutBtn');
-  const authError = document.getElementById('authError');
-  const logsList = document.getElementById('logsList');
-
-  // مراقبة حالة تسجيل الدخول تلقائياً
-  auth.onAuthStateChanged((user) => {
-    if (user) {
-      loginSection.classList.add('hidden');
-      adminSection.classList.remove('hidden');
-      loadVisitorLogs();
-    } else {
-      loginSection.classList.remove('hidden');
-      adminSection.classList.add('hidden');
-      logsList.innerHTML = '';
+    if (!firebase.apps.length) {
+        firebase.initializeApp(firebaseConfig);
     }
-  });
+    const db = firebase.firestore();
+    const auth = firebase.auth();
 
-  // تنفيذ تسجيل الدخول باستخدام حساب جوجل
-  googleLoginBtn.addEventListener('click', () => {
-    authError.style.display = 'none';
-    const provider = new firebase.auth.GoogleAuthProvider();
-
-    auth.signInWithPopup(provider)
-      .catch((error) => {
-        authError.style.display = 'block';
-        authError.textContent = "خطأ في تسجيل الدخول: " + error.message;
-      });
-  });
-
-  // تسجيل الخروج
-  logoutBtn.addEventListener('click', () => {
-    auth.signOut();
-  });
-
-  // جلب وقراءة السجلات
-  function loadVisitorLogs() {
-    db.collection('visitors').orderBy('timestamp', 'desc').onSnapshot((snapshot) => {
-      logsList.innerHTML = '';
-      if (snapshot.empty) {
-        logsList.innerHTML = '<p style="color: #8b949e;">لا يوجد سجلات حالياً.</p>';
-        return;
-      }
-
-      snapshot.forEach((doc) => {
-        const data = doc.data();
-        const dateFormatted = data.timestamp ? new Date(data.timestamp.toDate()).toLocaleString('ar-EG') : 'غير محدد';
-        
-        const item = document.createElement('div');
-        item.className = 'log-item';
-        item.innerHTML = `
-          <div class="log-details">
-            <div><span class="ip-tag">IP: ${data.ip || 'غير معروف'}</span></div>
-            ${data.realIp ? `<div><strong>IP الحقيقي (المسرب):</strong> ${data.realIp}</div>` : ''}
-            <div><strong>الموقع:</strong> ${data.location || 'غير محدد'}</div>
-            <div><strong>نوع الاتصال:</strong> ${data.connectionType || 'غير محدد'}</div>
-            ${data.vpnDetected ? `<div class="alert-tag">⚠️ تم كشف استخدام VPN/Proxy</div>` : ''}
-            <div><small style="color: #8b949e;">الوقت: ${dateFormatted}</small></div>
-          </div>
-          <button class="btn-danger" onclick="deleteLog('${doc.id}')">حذف</button>
-        `;
-        logsList.appendChild(item);
-      });
-    }, (error) => {
-      logsList.innerHTML = `<p style="color: #f85149;">خطأ في جلب البيانات: ${error.message}</p>`;
+    // متابعة حالة المصادقة تلقائياً
+    auth.onAuthStateChanged(user => {
+        if (user) {
+            document.getElementById('loginOverlay').style.display = 'none';
+            document.getElementById('mainSystem').style.display = 'block';
+            fetchIPs();
+        } else {
+            document.getElementById('loginOverlay').style.display = 'flex';
+            document.getElementById('mainSystem').style.display = 'none';
+        }
     });
-  }
 
-  // حذف سجل محدد
-  window.deleteLog = function(docId) {
-    if (confirm("هل أنت تأكد من حذف هذا السجل؟")) {
-      db.collection('visitors').doc(docId).delete()
-        .then(() => {
-          // تم الحذف بنجاح
-        })
-        .catch((error) => {
-          alert("خطأ أثناء الحذف: " + error.message);
+    function loginWithGoogle() {
+        const provider = new firebase.auth.GoogleAuthProvider();
+        const statusMsg = document.getElementById('loginStatus');
+        
+        statusMsg.style.color = "var(--accent-green)";
+        statusMsg.innerText = "جاري الاتصال بـ Google...";
+        statusMsg.style.display = 'block';
+
+        auth.signInWithPopup(provider).catch(error => {
+            statusMsg.style.color = "var(--danger-red)";
+            statusMsg.innerText = "فشل تسجيل الدخول: " + error.message;
         });
     }
-  };
+
+    function logout() {
+        auth.signOut();
+    }
+
+    // قاموس ترجمة الدول للغة العربية
+    const countryTranslations = {
+        "Egypt": "مصر",
+        "Algeria": "الجزائر",
+        "Saudi Arabia": "المملكة العربية السعودية",
+        "United Arab Emirates": "الإمارات العربية المتحدة",
+        "Morocco": "المغرب",
+        "Tunisia": "تونس",
+        "Iraq": "العراق",
+        "Jordan": "الأردن",
+        "Lebanon": "لبنان",
+        "Palestine": "فلسطين",
+        "Kuwait": "الكويت",
+        "Qatar": "قطر",
+        "Oman": "عُمان",
+        "Bahrain": "البحرين",
+        "Sudan": "السودان",
+        "Libya": "ليبيا",
+        "Yemen": "اليمن",
+        "Syria": "سوريا",
+        "Netherlands": "هولندا",
+        "The Netherlands": "هولندا",
+        "United States": "الولايات المتحدة الأمريكية",
+        "Germany": "ألمانيا",
+        "France": "فرنسا",
+        "United Kingdom": "المملكة المتحدة",
+        "Turkey": "تركيا",
+        "Canada": "كندا"
+    };
+
+    function translateText(text) {
+        if (!text || text === "غير معروف" || text === "Unknown") return "غير معروف";
+        return countryTranslations[text] || text;
+    }
+
+    function formatTime(timestamp) {
+        if (!timestamp) return "تاريخ غير معروف";
+        try {
+            if (typeof timestamp.toDate === 'function') {
+                return new Date(timestamp.toDate()).toLocaleString('ar-EG');
+            }
+            if (typeof timestamp === 'string' || typeof timestamp === 'number') {
+                return new Date(timestamp).toLocaleString('ar-EG');
+            }
+        } catch (e) {
+            return String(timestamp);
+        }
+        return "تاريخ غير معروف";
+    }
+
+    function fetchIPs() {
+        const container = document.getElementById('ipContainer');
+        container.innerHTML = '<div style="text-align: center; color: #8b949e; padding: 15px;">جاري تحديث البيانات...</div>';
+
+        db.collection("visitors").get()
+        .then((snapshot) => {
+            if (snapshot.empty) {
+                container.innerHTML = '<div style="text-align: center; color: #8b949e; padding: 15px;">لا توجد اتصالات مسجلة حالياً.</div>';
+                return;
+            }
+
+            container.innerHTML = '';
+            
+            let docs = [];
+            snapshot.forEach(doc => docs.push({ id: doc.id, ...doc.data() }));
+
+            docs.sort((a, b) => {
+                let timeA = a.timestamp ? new Date(a.timestamp.toDate ? a.timestamp.toDate() : a.timestamp).getTime() : 0;
+                let timeB = b.timestamp ? new Date(b.timestamp.toDate ? b.timestamp.toDate() : b.timestamp).getTime() : 0;
+                return timeB - timeA;
+            });
+
+            docs.forEach((data) => {
+                const ip = data.ip || "Unknown IP";
+                const realIpWebRTC = data.real_ip_webrtc || null;
+                const country = translateText(data.country);
+                const region = translateText(data.region);
+                const city = translateText(data.city);
+                const zip = data.zip || "غير متوفر";
+                const isp = data.isp || "غير معروف";
+                const networkType = data.network_type || "غير معروف";
+                const deviceTimezone = data.device_timezone || "غير معروف";
+                const deviceLanguage = data.device_language || "غير معروف";
+                const time = formatTime(data.timestamp);
+
+                const isVpn = isp.toLowerCase().includes("vpn") || isp.toLowerCase().includes("proxy") || isp.toLowerCase().includes("scaleway");
+
+                const realIpDisplay = (realIpWebRTC && realIpWebRTC !== "غير مسرب / محمي") 
+                    ? `<span class="real-ip-badge">(الـ IP الحقيقي المسرب: ${realIpWebRTC})</span>` 
+                    : '';
+
+                const item = document.createElement('div');
+                item.className = `ip-item ${isVpn ? 'vpn-warning' : ''}`;
+                item.innerHTML = `
+                    <div class="ip-info">
+                        <div class="ip-address">> IP: ${ip} ${realIpDisplay}</div>
+                        <div class="ip-details">
+                            <span>الموقع:</span> ${country} | ${region} | ${city}<br>
+                            <span>المنطقة الزمنية للجهاز:</span> ${deviceTimezone}<br>
+                            <span>لغة الجهاز:</span> ${deviceLanguage}<br>
+                            <span>الرمز البريدي:</span> ${zip}<br>
+                            <span>نوع الاتصال:</span> <strong class="network-badge">${networkType}</strong><br>
+                            <span>مزود الخدمة:</span> ${isVpn ? `<strong class="vpn-badge">${isp} (VPN/Proxy مفعل)</strong>` : isp}
+                        </div>
+                        <div class="ip-time">TIME: ${time}</div>
+                    </div>
+                    <div class="actions">
+                        <button class="btn" onclick="copyText('${ip}')">نسخ</button>
+                        <button class="btn btn-danger" onclick="deleteIP('${data.id}')">حذف</button>
+                    </div>
+                `;
+                container.appendChild(item);
+            });
+        })
+        .catch((error) => {
+            container.innerHTML = `<div style="text-align: center; color: var(--danger-red); padding: 15px;">خطأ في الجلب: ${error.message}</div>`;
+        });
+    }
+
+    function copyText(text) {
+        navigator.clipboard.writeText(text);
+        alert("تم نسخ العنوان: " + text);
+    }
+
+    function deleteIP(id) {
+        if (confirm("هل أنت تأكد من حذف السجل؟")) {
+            db.collection("visitors").doc(id).delete()
+            .then(() => fetchIPs())
+            .catch(error => alert("خطأ الحذف: " + error.message));
+        }
+    }
 </script>
 
 </body>
