@@ -4,11 +4,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>CYBER_CORE // IP MONITOR</title>
-    <!-- Firebase SDK (Compat v9/v10 for Web) -->
-    <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-firestore-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-auth-compat.js"></script>
-    
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;600;700&display=swap" rel="stylesheet">
     <style>
         :root {
@@ -56,7 +54,7 @@
         }
 
         .container {
-            max-width: 750px;
+            max-width: 700px;
             margin: 0 auto;
             position: relative;
             z-index: 2;
@@ -68,7 +66,7 @@
             left: 0;
             width: 100%;
             height: 100%;
-            background: rgba(8, 11, 16, 0.95);
+            background: rgba(8, 11, 16, 0.92);
             display: flex;
             justify-content: center;
             align-items: center;
@@ -77,21 +75,19 @@
         }
 
         .login-box {
-            background: rgba(22, 27, 34, 0.9);
+            background: rgba(22, 27, 34, 0.85);
             border: 1px solid var(--accent-green);
-            padding: 35px 25px;
+            padding: 30px 25px;
             border-radius: 8px;
             width: 100%;
-            max-width: 420px;
+            max-width: 400px;
             text-align: center;
-            box-shadow: 0 0 25px rgba(0, 255, 102, 0.25);
-            backdrop-filter: blur(8px);
+            box-shadow: 0 0 20px rgba(0, 255, 102, 0.2);
+            backdrop-filter: blur(5px);
         }
 
         .header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
+            text-align: center;
             padding: 15px 0;
             border-bottom: 2px solid var(--accent-green);
             margin-bottom: 25px;
@@ -99,9 +95,9 @@
 
         .header h1 {
             color: var(--accent-green);
-            font-size: 1.2rem;
+            font-size: 1.3rem;
             text-transform: uppercase;
-            letter-spacing: 1px;
+            letter-spacing: 2px;
             text-shadow: 0 0 8px rgba(0, 255, 102, 0.4);
         }
 
@@ -121,9 +117,37 @@
             margin-bottom: 15px;
             display: flex;
             align-items: center;
-            justify-content: space-between;
+            gap: 8px;
             border-bottom: 1px dashed var(--border-color);
             padding-bottom: 8px;
+        }
+
+        .input-group {
+            margin-bottom: 15px;
+        }
+
+        label {
+            display: block;
+            font-size: 0.85rem;
+            margin-bottom: 6px;
+            color: var(--accent-green);
+            text-align: right;
+        }
+
+        input {
+            width: 100%;
+            padding: 12px;
+            background: rgba(4, 6, 9, 0.65);
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+            color: var(--accent-green);
+            font-size: 0.95rem;
+            outline: none;
+        }
+
+        input:focus {
+            border-color: var(--accent-green);
+            box-shadow: 0 0 8px rgba(0,255,102,0.3);
         }
 
         .btn {
@@ -137,7 +161,6 @@
             transition: all 0.2s;
             display: inline-flex;
             align-items: center;
-            justify-content: center;
             gap: 6px;
             font-size: 0.85rem;
         }
@@ -146,24 +169,6 @@
             background: var(--accent-green);
             color: #000;
             box-shadow: 0 0 10px rgba(0,255,102,0.5);
-        }
-
-        .btn-google {
-            background: #ffffff;
-            color: #333333;
-            border: 1px solid #cccccc;
-            width: 100%;
-            padding: 12px;
-            font-size: 0.95rem;
-            font-weight: bold;
-            margin-top: 15px;
-            border-radius: 4px;
-        }
-
-        .btn-google:hover {
-            background: #f1f1f1;
-            color: #000;
-            box-shadow: 0 0 10px rgba(255,255,255,0.4);
         }
 
         .btn-danger {
@@ -211,7 +216,7 @@
 
         .ip-address {
             color: var(--accent-green);
-            font-size: 1.05rem;
+            font-size: 1.1rem;
             font-weight: 700;
             letter-spacing: 1px;
             text-shadow: 0 0 5px rgba(0, 255, 102, 0.5);
@@ -266,35 +271,35 @@
 </head>
 <body>
 
-<!-- شاشة تسجيل الدخول -->
 <div id="loginOverlay">
     <div class="login-box">
-        <h2 style="color: var(--accent-green); margin-bottom: 10px; font-size: 1.1rem;">> AUTHENTICATION REQUIRED</h2>
-        <p style="color: #8b949e; font-size: 0.85rem; margin-bottom: 15px;">يرجى تسجيل الدخول بحساب الأدمن للوصول للنظام</p>
-        
-        <button class="btn btn-google" onclick="loginWithGoogle()">
-            <svg width="18" height="18" viewBox="0 0 24 24" style="vertical-align: middle; margin-left: 8px;">
-                <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
-                <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
-                <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"/>
-                <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"/>
-            </svg>
-            تسجيل الدخول الى هاذا نظام꧁Yahya ꧂
-        </button>
-        <p id="loginStatus" style="font-size: 0.8rem; margin-top: 15px; display: none;"></p>
+        <h2 style="color: var(--accent-green); margin-bottom: 15px; font-size: 1.1rem;">> AUTHENTICATION REQUIRED</h2>
+        <div class="input-group">
+            <label for="loginPass">كلمة المرور:</label>
+            <input type="password" id="loginPass" placeholder="أدخل كلمة السر للوصول...">
+        </div>
+        <button class="btn" style="width: 100%; justify-content: center;" onclick="checkPassword()">[ ACCESS_SYSTEM ]</button>
+        <p id="loginStatus" style="font-size: 0.8rem; margin-top: 10px; display: none;"></p>
     </div>
 </div>
 
-<!-- لوحة التحكم الرئيسية -->
 <div class="container" id="mainSystem" style="display: none;">
     <div class="header">
         <h1><span class="status-badge"></span> SYSTEM LOGS // IP MONITOR</h1>
-        <button class="btn btn-danger" onclick="logout()">[ LOGOUT ]</button>
     </div>
 
     <div class="card">
-        <div class="card-title">
-            <span>> ACTIVE_CONNECTIONS (سجلات IP)</span>
+        <div class="card-title">> CONFIG_SECURITY</div>
+        <div class="input-group">
+            <label for="newPass">تحديث كلمة سر اللوحة:</label>
+            <input type="text" id="newPass" placeholder="أدخل كلمة السر الجديدة...">
+        </div>
+        <button class="btn" onclick="updatePassword()">[ SAVE_SETTINGS ]</button>
+    </div>
+
+    <div class="card">
+        <div class="card-title" style="justify-content: space-between;">
+            <span>> ACTIVE_CONNECTIONS (IP_LOGS)</span>
             <button class="btn" onclick="fetchIPs()">[ REFRESH ]</button>
         </div>
         <div id="ipContainer" class="ip-list">
@@ -317,39 +322,8 @@
         firebase.initializeApp(firebaseConfig);
     }
     const db = firebase.firestore();
-    const auth = firebase.auth();
 
-    // متابعة حالة المصادقة تلقائياً
-    auth.onAuthStateChanged(user => {
-        if (user) {
-            document.getElementById('loginOverlay').style.display = 'none';
-            document.getElementById('mainSystem').style.display = 'block';
-            fetchIPs();
-        } else {
-            document.getElementById('loginOverlay').style.display = 'flex';
-            document.getElementById('mainSystem').style.display = 'none';
-        }
-    });
-
-    function loginWithGoogle() {
-        const provider = new firebase.auth.GoogleAuthProvider();
-        const statusMsg = document.getElementById('loginStatus');
-        
-        statusMsg.style.color = "var(--accent-green)";
-        statusMsg.innerText = "جاري الاتصال بـ Google...";
-        statusMsg.style.display = 'block';
-
-        auth.signInWithPopup(provider).catch(error => {
-            statusMsg.style.color = "var(--danger-red)";
-            statusMsg.innerText = "فشل تسجيل الدخول: " + error.message;
-        });
-    }
-
-    function logout() {
-        auth.signOut();
-    }
-
-    // قاموس ترجمة الدول للغة العربية
+    // قاموس ترجمة الدول الشهيرة للغة العربية
     const countryTranslations = {
         "Egypt": "مصر",
         "Algeria": "الجزائر",
@@ -382,6 +356,63 @@
     function translateText(text) {
         if (!text || text === "غير معروف" || text === "Unknown") return "غير معروف";
         return countryTranslations[text] || text;
+    }
+
+    function checkPassword() {
+        const inputPass = document.getElementById('loginPass').value.trim();
+        const statusMsg = document.getElementById('loginStatus');
+
+        if (!inputPass) {
+            statusMsg.style.color = "var(--danger-red)";
+            statusMsg.innerText = "يرجى كتابة كلمة السر!";
+            statusMsg.style.display = 'block';
+            return;
+        }
+
+        const configDocRef = db.collection("store_config").doc("main");
+
+        configDocRef.get().then((doc) => {
+            if (!doc.exists) {
+                configDocRef.set({ pass: inputPass }).then(() => {
+                    alert("تم إعداد كلمة السر لأول مرة بنجاح والوصول للنظام!");
+                    grantAccess();
+                });
+            } else {
+                const storedPass = doc.data().pass;
+                if (inputPass === storedPass) {
+                    grantAccess();
+                } else {
+                    statusMsg.style.color = "var(--danger-red)";
+                    statusMsg.innerText = "كلمة السر غير صحيحة!";
+                    statusMsg.style.display = 'block';
+                }
+            }
+        }).catch(err => {
+            alert("خطأ في الاتصال: " + err.message);
+        });
+    }
+
+    function grantAccess() {
+        document.getElementById('loginOverlay').style.display = 'none';
+        document.getElementById('mainSystem').style.display = 'block';
+        fetchIPs();
+    }
+
+    function updatePassword() {
+        const pass = document.getElementById('newPass').value.trim();
+        if (!pass) {
+            alert("يرجى إدخال كلمة سر صحيحة!");
+            return;
+        }
+
+        db.collection("store_config").doc("main").set({
+            pass: pass
+        }, { merge: true })
+        .then(() => {
+            alert("تم تحديث كلمة السر في قاعدة البيانات بنجاح!");
+            document.getElementById('newPass').value = '';
+        })
+        .catch(error => alert("خطأ في الحفظ: " + error.message));
     }
 
     function formatTime(timestamp) {
@@ -446,12 +477,12 @@
                     <div class="ip-info">
                         <div class="ip-address">> IP: ${ip} ${realIpDisplay}</div>
                         <div class="ip-details">
-                            <span>الموقع:</span> ${country} | ${region} | ${city}<br>
+                            <span>الموقع:</span> <span class="translatable">${country}</span> | <span class="translatable">${region}</span> | <span class="translatable">${city}</span><br>
                             <span>المنطقة الزمنية للجهاز:</span> ${deviceTimezone}<br>
                             <span>لغة الجهاز:</span> ${deviceLanguage}<br>
                             <span>الرمز البريدي:</span> ${zip}<br>
                             <span>نوع الاتصال:</span> <strong class="network-badge">${networkType}</strong><br>
-                            <span>مزود الخدمة:</span> ${isVpn ? `<strong class="vpn-badge">${isp} (VPN/Proxy مفعل)</strong>` : isp}
+                            <span>مزود الخدمة:</span> ${isVpn ? `<strong class="vpn-badge">${isp}</strong>` : isp}
                         </div>
                         <div class="ip-time">TIME: ${time}</div>
                     </div>
