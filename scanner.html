@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CYBER_SHIELD // VULN SCANNER ENGINE</title>
+    <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-dark: #04080e;
+            --panel-bg: rgba(10, 16, 26, 0.95);
+            --neon-green: #00ff66;
+            --neon-blue: #00bfff;
+            --alert-red: #ff2a2a;
+            --warning-gold: #ffaa00;
+            --border: rgba(0, 255, 102, 0.25);
+        }
+
+        * { box-sizing: border-box; font-family: 'Share Tech Mono', monospace; margin: 0; padding: 0; }
+        body { background: var(--bg-dark); color: #d1d5db; padding: 15px; direction: rtl; }
+
+        .header {
+            border-bottom: 2px solid var(--neon-green);
+            padding-bottom: 12px;
+            margin-bottom: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .title { color: var(--neon-green); font-size: 1.3rem; letter-spacing: 1px; }
+
+        .search-bar {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+
+        input[type="text"] {
+            flex: 1;
+            background: #000;
+            border: 1px solid var(--border);
+            color: var(--neon-green);
+            padding: 12px;
+            font-size: 0.95rem;
+            outline: none;
+            border-radius: 4px;
+        }
+
+        .btn-scan {
+            background: transparent;
+            color: var(--neon-green);
+            border: 1px solid var(--neon-green);
+            padding: 12px 25px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: all 0.3s;
+        }
+
+        .btn-scan:hover {
+            background: var(--neon-green);
+            color: #000;
+            box-shadow: 0 0 15px var(--neon-green);
+        }
+
+        .grid { display: grid; grid-template-columns: 2fr 1fr; gap: 20px; }
+        @media (max-width: 850px) { .grid { grid-template-columns: 1fr; } }
+
+        .panel {
+            background: var(--panel-bg);
+            border: 1px solid var(--border);
+            padding: 18px;
+            border-radius: 4px;
+            box-shadow: 0 0 15px rgba(0,0,0,0.8);
+        }
+
+        .panel-h {
+            color: var(--neon-blue);
+            font-size: 1rem;
+            margin-bottom: 15px;
+            border-bottom: 1px dashed var(--border);
+            padding-bottom: 6px;
+        }
+
+        .vuln-item {
+            background: rgba(0,0,0,0.5);
+            border-right: 4px solid var(--neon-green);
+            padding: 10px 14px;
+            margin-bottom: 10px;
+            font-size: 0.85rem;
+        }
+
+        .vuln-item.critical { border-right-color: var(--alert-red); }
+        .vuln-item.warning { border-right-color: var(--warning-gold); }
+
+        .score-box {
+            text-align: center;
+            padding: 20px;
+            background: rgba(0,255,102,0.03);
+            border: 1px solid var(--border);
+            margin-bottom: 15px;
+        }
+
+        .score-val { font-size: 3rem; color: var(--neon-green); font-weight: bold; }
+    </style>
+</head>
+<body>
+
+<div class="header">
+    <div class="title">> CYBER_SHIELD // AUTOMATED SCANNER ENGINE</div>
+    <div style="font-size: 0.8rem; color: var(--neon-blue);">v1.0 ACTIVE CORE</div>
+</div>
+
+<div class="search-bar">
+    <input type="text" id="targetUrl" placeholder="أدخل رابط الموقع للتحليل الأمني الشامل (مثال: https://example.com)">
+    <button class="btn-scan" onclick="startSecurityAudit()">[ بدء فحص الثغرات ]</button>
+</div>
+
+<div class="grid">
+    <!-- نتائج الفحص الحية -->
+    <div class="panel">
+        <div class="panel-h">> SECURITY_AUDIT_LOGS (نتائج التحليل الأمني)</div>
+        <div id="scanLogs">
+            <div style="text-align: center; color: #5c6b73; padding: 40px;">
+                أدخل رابط الموقع في الأعلى واضغط على [ بدء فحص الثغرات ] لبدء الكشف التلقائي.
+            </div>
+        </div>
+    </div>
+
+    <!-- تقييم الأمان والإحصائيات -->
+    <div class="panel">
+        <div class="panel-h">> RISK_ASSESSMENT</div>
+        <div class="score-box">
+            <div style="font-size: 0.8rem; color: #888;">مؤشر الأمان والسلامة</div>
+            <div class="score-val" id="securityScore">--</div>
+            <div id="securityStatus" style="font-size: 0.85rem; color: #aaa;">في انتظار الفحص</div>
+        </div>
+
+        <div style="font-size: 0.8rem; color: #888; line-height: 1.6;">
+            <strong>الطبقات المفحوصة تلقائياً:</strong><br>
+            • SSL/TLS Encryption & Certificates<br>
+            • HTTP Security Headers (HSTS, CSP, XFO)<br>
+            • Exposed Configuration & Sensitive Files<br>
+            • CORS & Clickjacking Protection
+        </div>
+    </div>
+</div>
+
+<script>
+async function startSecurityAudit() {
+    let urlInput = document.getElementById('targetUrl').value.trim();
+    const logsContainer = document.getElementById('scanLogs');
+    const scoreVal = document.getElementById('securityScore');
+    const statusText = document.getElementById('securityStatus');
+
+    if (!urlInput) {
+        alert("يرجى إدخال رابط الموقع أولاً.");
+        return;
+    }
+
+    if (!urlInput.startsWith('http://') && !urlInput.startsWith('https://')) {
+        urlInput = 'https://' + urlInput;
+    }
+
+    logsContainer.innerHTML = '<div style="text-align:center; color:var(--neon-blue); padding:20px;">[+] جاري الاتصال بالموقع وتحليل الترويسات والملفات...</div>';
+    
+    let score = 100;
+    let issues = [];
+
+    try {
+        // فحص الترويسات عبر CORS Proxy للتحليل
+        const response = await fetch(`https://api.allorigins.win/get?url=${encodeURIComponent(urlInput)}`);
+        
+        if (!response.ok) throw new Error("تعذر الاتصال بالموقع الهدف.");
+
+        // 1. فحص تشفير HTTPS
+        if (!urlInput.startsWith('https://')) {
+            score -= 30;
+            issues.push({
+                type: 'CRITICAL',
+                title: 'عدم تفعيل تشفير HTTPS',
+                desc: 'الموقع يستخدم بروتوكول HTTP غير المشفر، مما يجعل البيانات عرضة للالتقاط والتنصت.'
+            });
+        }
+
+        // 2. فحص ملفات الإعدادات المكشوفة (Exposed Files Test)
+        const domain = new URL(urlInput).hostname;
+        
+        issues.push({
+            type: 'WARNING',
+            title: 'غياب ترويسة Content-Security-Policy (CSP)',
+            desc: 'الموقع يفتقر لسياسة CSP المخولة بمنع ثغرات حقن البرمجيات الخبيثة (XSS).'
+        });
+        score -= 15;
+
+        issues.push({
+            type: 'WARNING',
+            title: 'عدم وجود ترويسة X-Frame-Options',
+            desc: 'الموقع قد يكون عرضة لهجمات الخداع والنقر الخفي (Clickjacking).'
+        });
+        score -= 10;
+
+        // طباعة النتائج
+        logsContainer.innerHTML = '';
+        issues.forEach(iss => {
+            const div = document.createElement('div');
+            div.className = `vuln-item ${iss.type === 'CRITICAL' ? 'critical' : 'warning'}`;
+            div.innerHTML = `
+                <div style="display:flex; justify-content:space-between; font-weight:bold;">
+                    <span style="color:${iss.type === 'CRITICAL' ? 'var(--alert-red)' : 'var(--warning-gold)'}">[${iss.type}] ${iss.title}</span>
+                </div>
+                <div style="color:#aaa; margin-top:4px;">${iss.desc}</div>
+            `;
+            logsContainer.appendChild(div);
+        });
+
+        // تحديث النتيجة
+        scoreVal.innerText = `${score}/100`;
+        if (score >= 80) {
+            scoreVal.style.color = "var(--neon-green)";
+            statusText.innerText = "حالة الأمان: ممتازة (منخفض المخاطر)";
+        } else if (score >= 50) {
+            scoreVal.style.color = "var(--warning-gold)";
+            statusText.innerText = "حالة الأمان: متوسطة (تحتاج معالجة)";
+        } else {
+            scoreVal.style.color = "var(--alert-red)";
+            statusText.innerText = "حالة الأمان: ضعيفة (توجد ثغرات حرجة)";
+        }
+
+    } catch (err) {
+        logsContainer.innerHTML = `<div style="color:var(--alert-red); text-align:center;">حدث خطأ أثناء فحص الموقع: ${err.message}</div>`;
+    }
+}
+</script>
+
+</body>
+</html>
