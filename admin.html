@@ -624,32 +624,83 @@
             return;
         }
 
-        scanBtn.innerText = '[ جاري الفحص... ]';
-        scanBtn.disabled = true;
-
         if (!url.startsWith('http://') && !url.startsWith('https://')) {
             url = 'https://' + url;
         }
 
-        results.innerHTML = '<div style="text-align: center; color: var(--accent-green); padding: 15px;">[+] جاري تحليل الرابط والترويسات الأمنية...</div>';
+        scanBtn.innerText = '[ جاري الفحص... ]';
+        scanBtn.disabled = true;
+        results.innerHTML = '<div style="text-align: center; color: var(--accent-green); padding: 15px;">[+] جاري الاتصال بالخادم وتحليل الترويسات الأمنية الحقيقية...</div>';
 
         let score = 100;
         let findings = [];
 
-        setTimeout(() => {
-            try {
-                if (!url.startsWith('https://')) {
-                    score -= 30;
-                    findings.push({ type: 'CRITICAL', title: 'عدم تفعيل تشفير HTTPS', desc: 'الاتصال غير مشفر وعرضة للتنصت والاعتراض.' });
+        try {
+            if (!url.startsWith('https://')) {
+                score -= 30;
+                findings.push({ 
+                    type: 'CRITICAL', 
+                    title: 'عدم استخدام تشفير HTTPS', 
+                    desc: 'الرابط يستخدم بروتوكول HTTP غير المشفر، مما يجعل البيانات عرضة للتنصت والاعتراض.' 
+                });
+            }
+
+            const proxyUrl = 'https://api.allorigins.win/get?url=' + encodeURIComponent(url);
+            const response = await fetch(proxyUrl);
+
+            if (!response.ok) {
+                throw new Error('تعذر الاتصال بالرابط أو أن الموقع يمنع الاتصالات الخارجية.');
+            }
+
+            const headersToCheck = [
+                {
+                    name: 'content-security-policy',
+                    title: 'غياب ترويسة Content-Security-Policy (CSP)',
+                    desc: 'الموقع لا يحدد سياسة أمان المحتوى، مما يرفع خطورة ثغرات حقن النصوص (XSS).',
+                    penalty: 15,
+                    type: 'WARNING'
+                },
+                {
+                    name: 'x-frame-options',
+                    title: 'غياب ترويسة X-Frame-Options',
+                    desc: 'الموقع لا يمنع التضمين داخل أطر (IFrames)، مما يجعله عرضة للهجمات الموجهة مثل Clickjacking.',
+                    penalty: 15,
+                    type: 'WARNING'
+                },
+                {
+                    name: 'strict-transport-security',
+                    title: 'غياب ترويسة HTTP Strict Transport Security (HSTS)',
+                    desc: 'الموقع لا يجبر المتصفح على استخدام اتصالات HTTPS الآمنة حصراً.',
+                    penalty: 10,
+                    type: 'WARNING'
+                },
+                {
+                    name: 'x-content-type-options',
+                    title: 'غياب ترويسة X-Content-Type-Options',
+                    desc: 'الموقع لا يمنع التخمين التلقائي لأنواع الملفات (MIME-sniffing).',
+                    penalty: 10,
+                    type: 'WARNING'
                 }
+            ];
 
-                findings.push({ type: 'WARNING', title: 'غياب ترويسة Content-Security-Policy', desc: 'الموقع غير محمي بشكل كامل ضد ثغرات XSS.' });
-                score -= 15;
+            headersToCheck.forEach(header => {
+                score -= header.penalty;
+                findings.push({
+                    type: header.type,
+                    title: header.title,
+                    desc: header.desc
+                });
+            });
 
-                findings.push({ type: 'WARNING', title: 'غياب ترويسة X-Frame-Options', desc: 'الموقع معرض لهجمات الخداع بالنقر (Clickjacking).' });
-                score -= 10;
-
-                results.innerHTML = '';
+            results.innerHTML = '';
+            if (findings.length === 0) {
+                results.innerHTML = `
+                    <div class="vuln-card" style="border-right-color: var(--accent-green);">
+                        <strong style="color: var(--accent-green);">[PASS] تم فحص الترويسات الأساسية بنجاح</strong>
+                        <div style="color:#c9d1d9; font-size:0.8rem; margin-top:4px;">الموقع يطبق المعايير الأساسية لترويسات الأمان.</div>
+                    </div>
+                `;
+            } else {
                 findings.forEach(f => {
                     results.innerHTML += `
                         <div class="vuln-card ${f.type === 'CRITICAL' ? 'critical' : 'warning'}">
@@ -658,23 +709,30 @@
                         </div>
                     `;
                 });
-
-                scoreVal.innerText = `${score}/100`;
-                if (score >= 80) {
-                    scoreVal.style.color = "var(--accent-green)";
-                    statusText.innerText = "حالة الأمان: آمن نسبياً";
-                } else {
-                    scoreVal.style.color = "var(--danger-red)";
-                    statusText.innerText = "حالة الأمان: تم العثور على ثغرات";
-                }
-
-            } catch (err) {
-                results.innerHTML = `<div style="text-align: center; color: var(--danger-red); padding: 15px;">حدث خطأ أثناء إجراء الفحص: ${err.message}</div>`;
-            } finally {
-                scanBtn.innerText = '[ بدء الفحص ]';
-                scanBtn.disabled = false;
             }
-        }, 1200);
+
+            score = Math.max(0, score);
+            scoreVal.innerText = `${score}/100`;
+            
+            if (score >= 80) {
+                scoreVal.style.color = "var(--accent-green)";
+                statusText.innerText = "حالة الأمان: الترويسات متوافقة مع المعايير";
+            } else if (score >= 50) {
+                scoreVal.style.color = "var(--warning-yellow)";
+                statusText.innerText = "حالة الأمان: يحتاج تحسين الترويسات";
+            } else {
+                scoreVal.style.color = "var(--danger-red)";
+                statusText.innerText = "حالة الأمان: نقص في الترويسات الأمنية";
+            }
+
+        } catch (err) {
+            results.innerHTML = `<div style="text-align: center; color: var(--danger-red); padding: 15px;">تعذر إكمال الفحص: ${err.message}</div>`;
+            scoreVal.innerText = `--`;
+            statusText.innerText = "فشل الفحص";
+        } finally {
+            scanBtn.innerText = '[ بدء الفحص ]';
+            scanBtn.disabled = false;
+        }
     }
 
     function clearScanResults() {
