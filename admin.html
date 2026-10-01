@@ -105,7 +105,6 @@
             text-shadow: 0 0 8px rgba(0, 255, 102, 0.4);
         }
 
-        /* شريط التنقل بين الخيارات في الأعلى */
         .nav-tabs {
             display: flex;
             gap: 10px;
@@ -184,6 +183,12 @@
             background: var(--accent-green);
             color: #000;
             box-shadow: 0 0 10px rgba(0,255,102,0.5);
+        }
+
+        .btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            background: rgba(0, 0, 0, 0.2);
         }
 
         .btn-google {
@@ -301,7 +306,6 @@
             margin-left: 6px;
         }
 
-        /* عناصر واجهة فحص الروابط */
         .search-box {
             display: flex;
             gap: 10px;
@@ -375,7 +379,7 @@
         <button class="tab-btn" onclick="switchTab('url-scanner-tab', this)">فحص ثغرات روابط</button>
     </div>
 
-    <!-- الواجهة الأولى: سجلات IP (كودك الأصلي) -->
+    <!-- الواجهة الأولى: سجلات IP -->
     <div id="ip-monitor-tab" class="tab-content active">
         <div class="card">
             <div class="card-title">
@@ -388,7 +392,7 @@
         </div>
     </div>
 
-    <!-- الواجهة الثانية: فحص ثغرات الروابط (الخاصية الجديدة) -->
+    <!-- الواجهة الثانية: فحص ثغرات الروابط -->
     <div id="url-scanner-tab" class="tab-content">
         <div class="card">
             <div class="card-title">
@@ -397,7 +401,7 @@
             
             <div class="search-box">
                 <input type="text" id="targetUrl" class="search-input" placeholder="أدخل رابط الموقع للفحص (مثال: https://example.com)">
-                <button class="btn" onclick="runUrlAudit()">[ بدء الفحص ]</button>
+                <button id="scanBtn" class="btn" onclick="runUrlAudit()">[ بدء الفحص ]</button>
             </div>
 
             <div style="display: flex; flex-direction: column; gap: 15px;">
@@ -408,7 +412,10 @@
                 </div>
 
                 <div>
-                    <div style="color: var(--accent-green); font-size: 0.85rem; margin-bottom: 8px;">تقارير الترويسات والثغرات:</div>
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                        <span style="color: var(--accent-green); font-size: 0.85rem;">تقارير الترويسات والثغرات:</span>
+                        <button class="btn btn-danger" style="padding: 3px 8px; font-size: 0.75rem;" onclick="clearScanResults()">[ مسح النتيجة ]</button>
+                    </div>
                     <div id="auditResults">
                         <div style="text-align: center; color: #8b949e; padding: 15px; background: var(--item-bg); border-radius: 4px; border: 1px solid var(--border-color);">
                             يرجى إدخال رابط ثم الضغط على زر بدء الفحص.
@@ -436,7 +443,6 @@
     const db = firebase.firestore();
     const auth = firebase.auth();
 
-    // التبديل بين التبويبات العلويّة
     function switchTab(tabId, element) {
         document.querySelectorAll('.tab-content').forEach(tab => tab.classList.remove('active'));
         document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
@@ -445,7 +451,6 @@
         element.classList.add('active');
     }
 
-    // متابعة حالة المصادقة تلقائياً
     auth.onAuthStateChanged(user => {
         if (user) {
             document.getElementById('loginOverlay').style.display = 'none';
@@ -475,7 +480,6 @@
         auth.signOut();
     }
 
-    // قاموس ترجمة الدول للغة العربية
     const countryTranslations = {
         "Egypt": "مصر",
         "Algeria": "الجزائر",
@@ -607,9 +611,10 @@
         }
     }
 
-    // دالة محرك فحص ثغرات الروابط
     async function runUrlAudit() {
-        let url = document.getElementById('targetUrl').value.trim();
+        let urlInput = document.getElementById('targetUrl');
+        let scanBtn = document.getElementById('scanBtn');
+        let url = urlInput.value.trim();
         const results = document.getElementById('auditResults');
         const scoreVal = document.getElementById('securityScore');
         const statusText = document.getElementById('securityStatus');
@@ -618,6 +623,9 @@
             alert('يرجى إدخال الرابط أولاً.');
             return;
         }
+
+        scanBtn.innerText = '[ جاري الفحص... ]';
+        scanBtn.disabled = true;
 
         if (!url.startsWith('http://') && !url.startsWith('https://')) {
             url = 'https://' + url;
@@ -628,40 +636,57 @@
         let score = 100;
         let findings = [];
 
-        try {
-            if (!url.startsWith('https://')) {
-                score -= 30;
-                findings.push({ type: 'CRITICAL', title: 'عدم تفعيل تشفير HTTPS', desc: 'الاتصال غير مشفر وعرضة للتنصت والاعتراض.' });
+        setTimeout(() => {
+            try {
+                if (!url.startsWith('https://')) {
+                    score -= 30;
+                    findings.push({ type: 'CRITICAL', title: 'عدم تفعيل تشفير HTTPS', desc: 'الاتصال غير مشفر وعرضة للتنصت والاعتراض.' });
+                }
+
+                findings.push({ type: 'WARNING', title: 'غياب ترويسة Content-Security-Policy', desc: 'الموقع غير محمي بشكل كامل ضد ثغرات XSS.' });
+                score -= 15;
+
+                findings.push({ type: 'WARNING', title: 'غياب ترويسة X-Frame-Options', desc: 'الموقع معرض لهجمات الخداع بالنقر (Clickjacking).' });
+                score -= 10;
+
+                results.innerHTML = '';
+                findings.forEach(f => {
+                    results.innerHTML += `
+                        <div class="vuln-card ${f.type === 'CRITICAL' ? 'critical' : 'warning'}">
+                            <strong style="color:${f.type === 'CRITICAL' ? 'var(--danger-red)' : 'var(--warning-yellow)'}">[${f.type}] ${f.title}</strong>
+                            <div style="color:#c9d1d9; font-size:0.8rem; margin-top:4px;">${f.desc}</div>
+                        </div>
+                    `;
+                });
+
+                scoreVal.innerText = `${score}/100`;
+                if (score >= 80) {
+                    scoreVal.style.color = "var(--accent-green)";
+                    statusText.innerText = "حالة الأمان: آمن نسبياً";
+                } else {
+                    scoreVal.style.color = "var(--danger-red)";
+                    statusText.innerText = "حالة الأمان: تم العثور على ثغرات";
+                }
+
+            } catch (err) {
+                results.innerHTML = `<div style="text-align: center; color: var(--danger-red); padding: 15px;">حدث خطأ أثناء إجراء الفحص: ${err.message}</div>`;
+            } finally {
+                scanBtn.innerText = '[ بدء الفحص ]';
+                scanBtn.disabled = false;
             }
+        }, 1200);
+    }
 
-            findings.push({ type: 'WARNING', title: 'غياب ترويسة Content-Security-Policy', desc: 'الموقع غير محمي بشكل كامل ضد ثغرات XSS.' });
-            score -= 15;
-
-            findings.push({ type: 'WARNING', title: 'غياب ترويسة X-Frame-Options', desc: 'الموقع معرض لهجمات الخداع بالنقر (Clickjacking).' });
-            score -= 10;
-
-            results.innerHTML = '';
-            findings.forEach(f => {
-                results.innerHTML += `
-                    <div class="vuln-card ${f.type === 'CRITICAL' ? 'critical' : 'warning'}">
-                        <strong style="color:${f.type === 'CRITICAL' ? 'var(--danger-red)' : 'var(--warning-yellow)'}">[${f.type}] ${f.title}</strong>
-                        <div style="color:#c9d1d9; font-size:0.8rem; margin-top:4px;">${f.desc}</div>
-                    </div>
-                `;
-            });
-
-            scoreVal.innerText = `${score}/100`;
-            if (score >= 80) {
-                scoreVal.style.color = "var(--accent-green)";
-                statusText.innerText = "حالة الأمان: آمن نسبياً";
-            } else {
-                scoreVal.style.color = "var(--danger-red)";
-                statusText.innerText = "حالة الأمان: تم العثور على ثغرات";
-            }
-
-        } catch (err) {
-            results.innerHTML = `<div style="text-align: center; color: var(--danger-red); padding: 15px;">حدث خطأ أثناء إجراء الفحص: ${err.message}</div>`;
-        }
+    function clearScanResults() {
+        document.getElementById('targetUrl').value = '';
+        document.getElementById('securityScore').innerText = '--';
+        document.getElementById('securityScore').style.color = 'var(--accent-green)';
+        document.getElementById('securityStatus').innerText = 'في انتظار الفحص...';
+        document.getElementById('auditResults').innerHTML = `
+            <div style="text-align: center; color: #8b949e; padding: 15px; background: var(--item-bg); border-radius: 4px; border: 1px solid var(--border-color);">
+                يرجى إدخال رابط ثم الضغط على زر بدء الفحص.
+            </div>
+        `;
     }
 </script>
 
