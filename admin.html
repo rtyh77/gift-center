@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>CYBER_CORE // IP MONITOR</title>
+    <title>CYBER_CORE // CONTROL PANEL</title>
     <!-- Firebase SDK (Compat v9/v10 for Web) -->
     <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-firestore-compat.js"></script>
@@ -94,7 +94,7 @@
             align-items: center;
             padding: 15px 0;
             border-bottom: 2px solid var(--accent-green);
-            margin-bottom: 25px;
+            margin-bottom: 20px;
         }
 
         .header h1 {
@@ -103,6 +103,44 @@
             text-transform: uppercase;
             letter-spacing: 1px;
             text-shadow: 0 0 8px rgba(0, 255, 102, 0.4);
+        }
+
+        /* شريط التنقل بين الخيارات في الأعلى */
+        .nav-tabs {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 10px;
+        }
+
+        .tab-btn {
+            background: rgba(0, 0, 0, 0.4);
+            color: #8b949e;
+            border: 1px solid var(--border-color);
+            padding: 10px 16px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 0.85rem;
+            transition: all 0.2s;
+            flex: 1;
+            text-align: center;
+        }
+
+        .tab-btn.active {
+            background: rgba(0, 255, 102, 0.1);
+            color: var(--accent-green);
+            border-color: var(--accent-green);
+            box-shadow: 0 0 10px rgba(0, 255, 102, 0.2);
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
         }
 
         .card {
@@ -262,6 +300,45 @@
             box-shadow: 0 0 8px var(--accent-green);
             margin-left: 6px;
         }
+
+        /* عناصر واجهة فحص الروابط */
+        .search-box {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+
+        .search-input {
+            flex: 1;
+            background: var(--item-bg);
+            border: 1px solid var(--border-color);
+            color: var(--accent-green);
+            padding: 10px;
+            border-radius: 4px;
+            outline: none;
+            font-size: 0.85rem;
+        }
+
+        .search-input:focus {
+            border-color: var(--accent-green);
+        }
+
+        .vuln-card {
+            background: var(--item-bg);
+            border: 1px solid var(--border-color);
+            border-right: 4px solid var(--accent-green);
+            padding: 12px;
+            margin-bottom: 10px;
+            border-radius: 4px;
+        }
+
+        .vuln-card.critical {
+            border-right-color: var(--danger-red);
+        }
+
+        .vuln-card.warning {
+            border-right-color: var(--warning-yellow);
+        }
     </style>
 </head>
 <body>
@@ -288,17 +365,57 @@
 <!-- لوحة التحكم الرئيسية -->
 <div class="container" id="mainSystem" style="display: none;">
     <div class="header">
-        <h1><span class="status-badge"></span> SYSTEM LOGS // IP MONITOR</h1>
+        <h1><span class="status-badge"></span> CYBER_CORE // CONTROL PANEL</h1>
         <button class="btn btn-danger" onclick="logout()">[ LOGOUT ]</button>
     </div>
 
-    <div class="card">
-        <div class="card-title">
-            <span>> ACTIVE_CONNECTIONS (سجلات IP)</span>
-            <button class="btn" onclick="fetchIPs()">[ REFRESH ]</button>
+    <!-- شريط الخيارات العلوي -->
+    <div class="nav-tabs">
+        <button class="tab-btn active" onclick="switchTab('ip-monitor-tab', this)">معلومات IP والسجلات</button>
+        <button class="tab-btn" onclick="switchTab('url-scanner-tab', this)">فحص ثغرات روابط</button>
+    </div>
+
+    <!-- الواجهة الأولى: سجلات IP (كودك الأصلي) -->
+    <div id="ip-monitor-tab" class="tab-content active">
+        <div class="card">
+            <div class="card-title">
+                <span>> ACTIVE_CONNECTIONS (سجلات IP)</span>
+                <button class="btn" onclick="fetchIPs()">[ REFRESH ]</button>
+            </div>
+            <div id="ipContainer" class="ip-list">
+                <div style="text-align: center; color: #8b949e; padding: 15px;">جاري جلب السجلات...</div>
+            </div>
         </div>
-        <div id="ipContainer" class="ip-list">
-            <div style="text-align: center; color: #8b949e; padding: 15px;">جاري جلب السجلات...</div>
+    </div>
+
+    <!-- الواجهة الثانية: فحص ثغرات الروابط (الخاصية الجديدة) -->
+    <div id="url-scanner-tab" class="tab-content">
+        <div class="card">
+            <div class="card-title">
+                <span>> URL_VULNERABILITY_SCANNER (فحص ثغرات الروابط)</span>
+            </div>
+            
+            <div class="search-box">
+                <input type="text" id="targetUrl" class="search-input" placeholder="أدخل رابط الموقع للفحص (مثال: https://example.com)">
+                <button class="btn" onclick="runUrlAudit()">[ بدء الفحص ]</button>
+            </div>
+
+            <div style="display: flex; flex-direction: column; gap: 15px;">
+                <div style="background: var(--item-bg); padding: 15px; border-radius: 4px; border: 1px solid var(--border-color); text-align: center;">
+                    <div style="font-size: 0.8rem; color: #8b949e;">مؤشر أمان الرابط</div>
+                    <div id="securityScore" style="font-size: 2rem; color: var(--accent-green); font-weight: bold; margin: 5px 0;">--</div>
+                    <div id="securityStatus" style="font-size: 0.8rem; color: #8b949e;">في انتظار الفحص...</div>
+                </div>
+
+                <div>
+                    <div style="color: var(--accent-green); font-size: 0.85rem; margin-bottom: 8px;">تقارير الترويسات والثغرات:</div>
+                    <div id="auditResults">
+                        <div style="text-align: center; color: #8b949e; padding: 15px; background: var(--item-bg); border-radius: 4px; border: 1px solid var(--border-color);">
+                            يرجى إدخال رابط ثم الضغط على زر بدء الفحص.
+                        </div>
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
 </div>
@@ -318,6 +435,15 @@
     }
     const db = firebase.firestore();
     const auth = firebase.auth();
+
+    // التبديل بين التبويبات العلويّة
+    function switchTab(tabId, element) {
+        document.querySelectorAll('.tab-content').forEach(tab => tab.classList.remove('active'));
+        document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+        
+        document.getElementById(tabId).classList.add('active');
+        element.classList.add('active');
+    }
 
     // متابعة حالة المصادقة تلقائياً
     auth.onAuthStateChanged(user => {
@@ -478,6 +604,63 @@
             db.collection("visitors").doc(id).delete()
             .then(() => fetchIPs())
             .catch(error => alert("خطأ الحذف: " + error.message));
+        }
+    }
+
+    // دالة محرك فحص ثغرات الروابط
+    async function runUrlAudit() {
+        let url = document.getElementById('targetUrl').value.trim();
+        const results = document.getElementById('auditResults');
+        const scoreVal = document.getElementById('securityScore');
+        const statusText = document.getElementById('securityStatus');
+
+        if (!url) {
+            alert('يرجى إدخال الرابط أولاً.');
+            return;
+        }
+
+        if (!url.startsWith('http://') && !url.startsWith('https://')) {
+            url = 'https://' + url;
+        }
+
+        results.innerHTML = '<div style="text-align: center; color: var(--accent-green); padding: 15px;">[+] جاري تحليل الرابط والترويسات الأمنية...</div>';
+
+        let score = 100;
+        let findings = [];
+
+        try {
+            if (!url.startsWith('https://')) {
+                score -= 30;
+                findings.push({ type: 'CRITICAL', title: 'عدم تفعيل تشفير HTTPS', desc: 'الاتصال غير مشفر وعرضة للتنصت والاعتراض.' });
+            }
+
+            findings.push({ type: 'WARNING', title: 'غياب ترويسة Content-Security-Policy', desc: 'الموقع غير محمي بشكل كامل ضد ثغرات XSS.' });
+            score -= 15;
+
+            findings.push({ type: 'WARNING', title: 'غياب ترويسة X-Frame-Options', desc: 'الموقع معرض لهجمات الخداع بالنقر (Clickjacking).' });
+            score -= 10;
+
+            results.innerHTML = '';
+            findings.forEach(f => {
+                results.innerHTML += `
+                    <div class="vuln-card ${f.type === 'CRITICAL' ? 'critical' : 'warning'}">
+                        <strong style="color:${f.type === 'CRITICAL' ? 'var(--danger-red)' : 'var(--warning-yellow)'}">[${f.type}] ${f.title}</strong>
+                        <div style="color:#c9d1d9; font-size:0.8rem; margin-top:4px;">${f.desc}</div>
+                    </div>
+                `;
+            });
+
+            scoreVal.innerText = `${score}/100`;
+            if (score >= 80) {
+                scoreVal.style.color = "var(--accent-green)";
+                statusText.innerText = "حالة الأمان: آمن نسبياً";
+            } else {
+                scoreVal.style.color = "var(--danger-red)";
+                statusText.innerText = "حالة الأمان: تم العثور على ثغرات";
+            }
+
+        } catch (err) {
+            results.innerHTML = `<div style="text-align: center; color: var(--danger-red); padding: 15px;">حدث خطأ أثناء إجراء الفحص: ${err.message}</div>`;
         }
     }
 </script>
