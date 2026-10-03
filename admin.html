@@ -443,6 +443,9 @@
     const db = firebase.firestore();
     const auth = firebase.auth();
 
+    // البريد الإلكتروني المصرح له بفتح النظام حصرياً
+    const ADMIN_EMAIL = "qdwryyhyy644@gmail.com";
+
     function switchTab(tabId, element) {
         document.querySelectorAll('.tab-content').forEach(tab => tab.classList.remove('active'));
         document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
@@ -451,11 +454,22 @@
         element.classList.add('active');
     }
 
+    // التحقق التلقائي من حالة المصادقة وتقييد الوصول بالأدمن فقط
     auth.onAuthStateChanged(user => {
         if (user) {
-            document.getElementById('loginOverlay').style.display = 'none';
-            document.getElementById('mainSystem').style.display = 'block';
-            fetchIPs();
+            if (user.email === ADMIN_EMAIL) {
+                document.getElementById('loginOverlay').style.display = 'none';
+                document.getElementById('mainSystem').style.display = 'block';
+                fetchIPs();
+            } else {
+                auth.signOut();
+                const statusMsg = document.getElementById('loginStatus');
+                statusMsg.style.color = "var(--danger-red)";
+                statusMsg.innerText = "❌ الوصول مرفوض: الحساب (" + user.email + ") غير مصرح له للدخول!";
+                statusMsg.style.display = 'block';
+                document.getElementById('loginOverlay').style.display = 'flex';
+                document.getElementById('mainSystem').style.display = 'none';
+            }
         } else {
             document.getElementById('loginOverlay').style.display = 'flex';
             document.getElementById('mainSystem').style.display = 'none';
@@ -470,7 +484,15 @@
         statusMsg.innerText = "جاري الاتصال بـ Google...";
         statusMsg.style.display = 'block';
 
-        auth.signInWithPopup(provider).catch(error => {
+        auth.signInWithPopup(provider)
+        .then((result) => {
+            if (result.user.email !== ADMIN_EMAIL) {
+                auth.signOut();
+                statusMsg.style.color = "var(--danger-red)";
+                statusMsg.innerText = "❌ هذا الحساب غير مصرح له بالوصول للنظام!";
+            }
+        })
+        .catch(error => {
             statusMsg.style.color = "var(--danger-red)";
             statusMsg.innerText = "فشل تسجيل الدخول: " + error.message;
         });
@@ -611,7 +633,6 @@
         }
     }
 
-    // دالة الفحص المحدثة لحل مشاكل CORS والرموز الزائدة
     async function runUrlAudit() {
         let urlInput = document.getElementById('targetUrl');
         let scanBtn = document.getElementById('scanBtn');
@@ -625,7 +646,6 @@
             return;
         }
 
-        // تنظيف الرابط من أي علامات اقتباس زئدة أو رموز غير صالحة
         rawUrl = rawUrl.replace(/^['"’‘`\s]+|['"’‘`\s]+$/g, '');
 
         let cleanHost = rawUrl.replace(/^https?:\/\//i, '').split('/')[0];
