@@ -56,7 +56,7 @@
         }
 
         .container {
-            max-width: 750px;
+            max-width: 850px;
             margin: 0 auto;
             position: relative;
             z-index: 2;
@@ -103,6 +103,35 @@
             text-transform: uppercase;
             letter-spacing: 1px;
             text-shadow: 0 0 8px rgba(0, 255, 102, 0.4);
+        }
+
+        /* شريط الإحصائيات المتقدم */
+        .stats-bar {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+
+        .stat-box {
+            background: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            padding: 12px;
+            text-align: center;
+            backdrop-filter: blur(3px);
+        }
+
+        .stat-box .num {
+            font-size: 1.4rem;
+            font-weight: bold;
+            color: var(--accent-green);
+            margin-top: 4px;
+        }
+
+        .stat-box .label {
+            font-size: 0.75rem;
+            color: #8b949e;
         }
 
         .nav-tabs {
@@ -249,7 +278,7 @@
             flex-direction: column;
             gap: 6px;
             flex: 1;
-            min-width: 240px;
+            min-width: 280px;
         }
 
         .ip-address {
@@ -258,12 +287,16 @@
             font-weight: 700;
             letter-spacing: 1px;
             text-shadow: 0 0 5px rgba(0, 255, 102, 0.5);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            flex-wrap: wrap;
         }
 
         .ip-details {
             font-size: 0.85rem;
             color: #c9d1d9;
-            line-height: 1.6;
+            line-height: 1.7;
         }
 
         .ip-details span {
@@ -284,16 +317,36 @@
             font-weight: bold;
         }
 
+        .risk-badge {
+            font-size: 0.7rem;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-weight: bold;
+        }
+
+        .risk-high {
+            background: rgba(255, 51, 68, 0.2);
+            color: var(--danger-red);
+            border: 1px solid var(--danger-red);
+        }
+
+        .risk-low {
+            background: rgba(0, 255, 102, 0.1);
+            color: var(--accent-green);
+            border: 1px solid var(--accent-green);
+        }
+
         .ip-time {
             font-size: 0.75rem;
             color: #8b949e;
-            margin-top: 4px;
+            margin-top: 6px;
         }
 
         .actions {
             display: flex;
             gap: 8px;
-            align-self: center;
+            align-self: flex-start;
+            flex-wrap: wrap;
         }
 
         .status-badge {
@@ -373,19 +426,41 @@
         <button class="btn btn-danger" onclick="logout()">[ LOGOUT ]</button>
     </div>
 
+    <!-- شريط الإحصائيات -->
+    <div class="stats-bar">
+        <div class="stat-box">
+            <div class="label">إجمالي الاتصالات</div>
+            <div class="num" id="statTotal">0</div>
+        </div>
+        <div class="stat-box">
+            <div class="label">اتصالات VPN / مشبوهة</div>
+            <div class="num" id="statVpn" style="color: var(--danger-red);">0</div>
+        </div>
+        <div class="stat-box">
+            <div class="label">مستخدمي AdBlock</div>
+            <div class="num" id="statAdblock" style="color: var(--warning-yellow);">0</div>
+        </div>
+    </div>
+
     <!-- شريط الخيارات العلوي -->
     <div class="nav-tabs">
-        <button class="tab-btn active" onclick="switchTab('ip-monitor-tab', this)">معلومات IP والسجلات</button>
+        <button class="tab-btn active" onclick="switchTab('ip-monitor-tab', this)">معلومات IP والبصمة الرقمية</button>
         <button class="tab-btn" onclick="switchTab('url-scanner-tab', this)">فحص ثغرات روابط</button>
     </div>
 
-    <!-- الواجهة الأولى: سجلات IP -->
+    <!-- الواجهة الأولى: سجلات IP والبصمة الرقمية -->
     <div id="ip-monitor-tab" class="tab-content active">
         <div class="card">
             <div class="card-title">
-                <span>> ACTIVE_CONNECTIONS (سجلات IP)</span>
+                <span>> ACTIVE_CONNECTIONS (سجلات IP المتقدمة)</span>
                 <button class="btn" onclick="fetchIPs()">[ REFRESH ]</button>
             </div>
+
+            <!-- حقل تصفية السجلات -->
+            <div class="search-box">
+                <input type="text" id="ipSearchInput" class="search-input" onkeyup="filterLogs()" placeholder="تصفية السجلات (ادخل IP، دولة، جهاز، أو اسم المزود)...">
+            </div>
+
             <div id="ipContainer" class="ip-list">
                 <div style="text-align: center; color: #8b949e; padding: 15px;">جاري جلب السجلات...</div>
             </div>
@@ -418,7 +493,7 @@
                     </div>
                     <div id="auditResults">
                         <div style="text-align: center; color: #8b949e; padding: 15px; background: var(--item-bg); border-radius: 4px; border: 1px solid var(--border-color);">
-                            يرجى إدخل رابط ثم الضغط على زر بدء الفحص.
+                            يرجى إدخال رابط ثم الضغط على زر بدء الفحص.
                         </div>
                     </div>
                 </div>
@@ -445,6 +520,7 @@
 
     // البريد الإلكتروني المصرح له بفتح النظام حصرياً
     const ADMIN_EMAIL = "qdwryyhyy644@gmail.com";
+    let cachedDocs = [];
 
     function switchTab(tabId, element) {
         document.querySelectorAll('.tab-content').forEach(tab => tab.classList.remove('active'));
@@ -454,7 +530,6 @@
         element.classList.add('active');
     }
 
-    // التحقق التلقائي من حالة المصادقة وتقييد الوصول بالأدمن فقط
     auth.onAuthStateChanged(user => {
         if (user) {
             if (user.email === ADMIN_EMAIL) {
@@ -559,65 +634,120 @@
         .then((snapshot) => {
             if (snapshot.empty) {
                 container.innerHTML = '<div style="text-align: center; color: #8b949e; padding: 15px;">لا توجد اتصالات مسجلة حالياً.</div>';
+                updateStats(0, 0, 0);
                 return;
             }
 
-            container.innerHTML = '';
-            
-            let docs = [];
-            snapshot.forEach(doc => docs.push({ id: doc.id, ...doc.data() }));
+            cachedDocs = [];
+            snapshot.forEach(doc => cachedDocs.push({ id: doc.id, ...doc.data() }));
 
-            docs.sort((a, b) => {
+            cachedDocs.sort((a, b) => {
                 let timeA = a.timestamp ? new Date(a.timestamp.toDate ? a.timestamp.toDate() : a.timestamp).getTime() : 0;
                 let timeB = b.timestamp ? new Date(b.timestamp.toDate ? b.timestamp.toDate() : b.timestamp).getTime() : 0;
                 return timeB - timeA;
             });
 
-            docs.forEach((data) => {
-                const ip = data.ip || "Unknown IP";
-                const realIpWebRTC = data.real_ip_webrtc || null;
-                const country = translateText(data.country);
-                const region = translateText(data.region);
-                const city = translateText(data.city);
-                const zip = data.zip || "غير متوفر";
-                const isp = data.isp || "غير معروف";
-                const networkType = data.network_type || "غير معروف";
-                const deviceTimezone = data.device_timezone || "غير معروف";
-                const deviceLanguage = data.device_language || "غير معروف";
-                const time = formatTime(data.timestamp);
-
-                const isVpn = isp.toLowerCase().includes("vpn") || isp.toLowerCase().includes("proxy") || isp.toLowerCase().includes("scaleway");
-
-                const realIpDisplay = (realIpWebRTC && realIpWebRTC !== "غير مسرب / محمي") 
-                    ? `<span class="real-ip-badge">(الـ IP الحقيقي المسرب: ${realIpWebRTC})</span>` 
-                    : '';
-
-                const item = document.createElement('div');
-                item.className = `ip-item ${isVpn ? 'vpn-warning' : ''}`;
-                item.innerHTML = `
-                    <div class="ip-info">
-                        <div class="ip-address">> IP: ${ip} ${realIpDisplay}</div>
-                        <div class="ip-details">
-                            <span>الموقع:</span> ${country} | ${region} | ${city}<br>
-                            <span>المنطقة الزمنية للجهاز:</span> ${deviceTimezone}<br>
-                            <span>لغة الجهاز:</span> ${deviceLanguage}<br>
-                            <span>الرمز البريدي:</span> ${zip}<br>
-                            <span>نوع الاتصال:</span> <strong class="network-badge">${networkType}</strong><br>
-                            <span>مزود الخدمة:</span> ${isVpn ? `<strong class="vpn-badge">${isp} (VPN/Proxy مفعل)</strong>` : isp}
-                        </div>
-                        <div class="ip-time">TIME: ${time}</div>
-                    </div>
-                    <div class="actions">
-                        <button class="btn" onclick="copyText('${ip}')">نسخ</button>
-                        <button class="btn btn-danger" onclick="deleteIP('${data.id}')">حذف</button>
-                    </div>
-                `;
-                container.appendChild(item);
-            });
+            renderLogs(cachedDocs);
         })
         .catch((error) => {
             container.innerHTML = `<div style="text-align: center; color: var(--danger-red); padding: 15px;">خطأ في الجلب: ${error.message}</div>`;
         });
+    }
+
+    function renderLogs(docs) {
+        const container = document.getElementById('ipContainer');
+        container.innerHTML = '';
+
+        let vpnCount = 0;
+        let adblockCount = 0;
+
+        docs.forEach((data) => {
+            const ip = data.ip || "Unknown IP";
+            const realIpWebRTC = data.real_ip_webrtc || null;
+            const country = translateText(data.country);
+            const region = translateText(data.region);
+            const city = translateText(data.city);
+            const zip = data.zip || "غير متوفر";
+            const isp = data.isp || "غير معروف";
+            const networkType = data.network_type || "غير معروف";
+            const deviceTimezone = data.device_timezone || "غير معروف";
+            const deviceLanguage = data.device_language || "غير معروف";
+            const time = formatTime(data.timestamp);
+
+            // البيانات المتقدمة الجديدة
+            const deviceType = data.device_type || "غير معروف";
+            const deviceModel = data.device_model || "غير معروف";
+            const screenRes = data.screen_resolution || "غير معروف";
+            const cpuCores = data.cpu_cores || "غير معروف";
+            const ramGb = data.ram_gb || "غير معروف";
+            const batteryLevel = data.battery_level || "غير معروف";
+            const batteryCharging = data.battery_charging || "";
+            const adblockActive = data.adblock_active || "غير مفعل";
+            const riskScore = data.risk_score || (data.is_vpn ? "HIGH" : "LOW");
+            const lat = data.latitude || null;
+            const lon = data.longitude || null;
+
+            const isVpn = data.is_vpn || isp.toLowerCase().includes("vpn") || isp.toLowerCase().includes("proxy") || isp.toLowerCase().includes("scaleway");
+
+            if (isVpn) vpnCount++;
+            if (adblockActive.includes("مفعل")) adblockCount++;
+
+            const realIpDisplay = (realIpWebRTC && realIpWebRTC !== "غير مسرب / محمي") 
+                ? `<span class="real-ip-badge">(الـ IP الحقيقي المسرب: ${realIpWebRTC})</span>` 
+                : '';
+
+            const mapBtnHtml = (lat && lon) 
+                ? `<button class="btn" onclick="openMap(${lat}, ${lon})">📍 خريطة</button>` 
+                : '';
+
+            const item = document.createElement('div');
+            item.className = `ip-item ${isVpn ? 'vpn-warning' : ''}`;
+            item.innerHTML = `
+                <div class="ip-info">
+                    <div class="ip-address">
+                        > IP: ${ip} ${realIpDisplay}
+                        <span class="risk-badge ${riskScore === 'HIGH' ? 'risk-high' : 'risk-low'}">RISK: ${riskScore}</span>
+                    </div>
+                    <div class="ip-details">
+                        <span>الموقع:</span> ${country} | ${region} | ${city}<br>
+                        <span>الجهاز والموديل:</span> <strong style="color:#00ff66">${deviceType} (${deviceModel})</strong><br>
+                        <span>حجم الشاشة:</span> ${screenRes} | <span>أنوية المعالج:</span> ${cpuCores} | <span>RAM:</span> ${ramGb}<br>
+                        <span>حالة البطارية:</span> <strong style="color:#ffcc00">${batteryLevel} ${batteryCharging}</strong><br>
+                        <span>مانع الإعلانات (AdBlock):</span> ${adblockActive}<br>
+                        <span>المنطقة الزمنية واللغة:</span> ${deviceTimezone} (${deviceLanguage})<br>
+                        <span>نوع الاتصال والمزود:</span> <strong class="network-badge">${networkType}</strong> - ${isVpn ? `<strong class="vpn-badge">${isp} (VPN/Proxy مفعل)</strong>` : isp}
+                    </div>
+                    <div class="ip-time">TIME: ${time}</div>
+                </div>
+                <div class="actions">
+                    ${mapBtnHtml}
+                    <button class="btn" onclick="copyText('${ip}')">نسخ</button>
+                    <button class="btn btn-danger" onclick="deleteIP('${data.id}')">حذف</button>
+                </div>
+            `;
+            container.appendChild(item);
+        });
+
+        updateStats(docs.length, vpnCount, adblockCount);
+    }
+
+    function updateStats(total, vpn, adblock) {
+        document.getElementById('statTotal').innerText = total;
+        document.getElementById('statVpn').innerText = vpn;
+        document.getElementById('statAdblock').innerText = adblock;
+    }
+
+    function filterLogs() {
+        const query = document.getElementById('ipSearchInput').value.toLowerCase();
+        const filtered = cachedDocs.filter(d => {
+            const str = JSON.stringify(d).toLowerCase();
+            return str.includes(query);
+        });
+        renderLogs(filtered);
+    }
+
+    function openMap(lat, lon) {
+        window.open(`https://www.google.com/maps?q=${lat},${lon}`, '_blank');
     }
 
     function copyText(text) {
