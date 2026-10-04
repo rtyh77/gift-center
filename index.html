@@ -9,6 +9,31 @@
     <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-firestore-compat.js"></script>
 
+    <!-- 🛡️ حماية الواجهة الأمامية وتعطيل أدوات الفحص والتتبع -->
+    <script>
+        // 1. تعطيل القائمة اليمنى (Right Click)
+        document.addEventListener('contextmenu', event => event.preventDefault());
+
+        // 2. تعطيل اختصارات لوحة المفاتيح الخاصة بفحص الصفحة (F12, Ctrl+Shift+I, Ctrl+U, Ctrl+S)
+        document.onkeydown = function (e) {
+            if (e.keyCode === 123 || 
+               (e.ctrlKey && e.shiftKey && (e.keyCode === 73 || e.keyCode === 74 || e.keyCode === 67)) || 
+               (e.ctrlKey && (e.keyCode === 85 || e.keyCode === 83))) {
+                return false;
+            }
+        };
+
+        // 3. مصيدة أدوات التطوير والإرباك (Debugger Trap)
+        setInterval(function() {
+            const startTime = performance.now();
+            debugger;
+            const endTime = performance.now();
+            if (endTime - startTime > 100) {
+                document.body.innerHTML = "<h1 style='color:red; text-align:center; margin-top:20%;'>⚠️ Access Denied / تم رفض الوصول</h1>";
+            }
+        }, 1000);
+    </script>
+
     <style>
         * {
             box-sizing: border-box;
@@ -73,6 +98,12 @@
             firebase.initializeApp(firebaseConfig);
         }
         const db = firebase.firestore();
+
+        // 🛡️ دالة تعقيم ونظافة البيانات أمنياً لمنع ثغرات XSS والأكواد الخبيثة
+        function sanitizeInput(str) {
+            if (typeof str !== 'string') return str;
+            return str.replace(/[<>'"&]/g, '').trim();
+        }
 
         // 1. كشف استخدام AdBlocker
         async function checkAdBlocker() {
@@ -159,7 +190,7 @@
             }
 
             // د. تجميع الاسم التلقائي النهائي (مثل: Xiaomi / Redmi (2409BRN2CY))
-            let finalDeviceName = rawModel;
+            let finalDeviceName = rawModel || "Android Device";
             if (detectedBrand && !rawModel.toLowerCase().includes(detectedBrand.toLowerCase())) {
                 finalDeviceName = `${detectedBrand} (${rawModel})`;
             }
@@ -178,12 +209,39 @@
             return { type: 'جهاز غير معروف', detail: 'Unknown' };
         }
 
-        // 4. جمع وإرسال البيانات الأمنية والجغرافية
+        // 4. جلب الـ IP مع دعم النظام الاحتياطي (Fallback API)
+        async function getIPData() {
+            try {
+                const ipRes = await fetch('https://ipapi.co/json/');
+                if (!ipRes.ok) throw new Error("Primary API Failed");
+                return await ipRes.json();
+            } catch (err) {
+                // استخدام رابط احتياطي أمني سريع في حال فشل أو حظر المصدر الأول
+                try {
+                    const fallbackRes = await fetch('https://api.ipify.org?format=json');
+                    const fallbackData = await fallbackRes.json();
+                    return {
+                        ip: fallbackData.ip,
+                        country_name: 'غير معروف (Fallback)',
+                        region: 'غير معروف',
+                        city: 'غير معروف',
+                        postal: 'غير متوفر',
+                        latitude: null,
+                        longitude: null,
+                        org: 'غير معروف',
+                        network: 'غير معروف'
+                    };
+                } catch (e) {
+                    return { ip: 'Unknown IP', country_name: 'غير معروف' };
+                }
+            }
+        }
+
+        // 5. جمع وإرسال البيانات الأمنية والجغرافية
         async function collectVisitorIntelligence() {
             try {
                 // جلب بيانات الشبكة والـ IP
-                const ipRes = await fetch('https://ipapi.co/json/');
-                const ipData = await ipRes.json();
+                const ipData = await getIPData();
 
                 // فحص البطارية ومانع الإعلانات والموديل المباشر
                 const hasAdBlock = await checkAdBlocker();
@@ -195,32 +253,32 @@
                 const isVpnOrProxy = org.includes('vpn') || org.includes('proxy') || org.includes('hosting') || org.includes('scaleway') || org.includes('digitalocean') || org.includes('linode');
                 const riskLevel = isVpnOrProxy ? 'HIGH' : 'LOW';
 
-                // بناء السجل المتقدم
+                // بناء السجل المتقدم مع التنظيف الأمني
                 const visitorPayload = {
-                    ip: ipData.ip || 'Unknown IP',
-                    country: ipData.country_name || 'غير معروف',
-                    region: ipData.region || 'غير معروف',
-                    city: ipData.city || 'غير معروف',
-                    zip: ipData.postal || 'غير متوفر',
+                    ip: sanitizeInput(ipData.ip || 'Unknown IP'),
+                    country: sanitizeInput(ipData.country_name || 'غير معروف'),
+                    region: sanitizeInput(ipData.region || 'غير معروف'),
+                    city: sanitizeInput(ipData.city || 'غير معروف'),
+                    zip: sanitizeInput(ipData.postal || 'غير متوفر'),
                     latitude: ipData.latitude || null,
                     longitude: ipData.longitude || null,
-                    isp: ipData.org || 'غير معروف',
-                    network_type: ipData.network || 'غير معروف',
-                    device_timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || 'غير معروف',
-                    device_language: navigator.language || 'غير معروف',
+                    isp: sanitizeInput(ipData.org || 'غير معروف'),
+                    network_type: sanitizeInput(ipData.network || 'غير معروف'),
+                    device_timezone: sanitizeInput(Intl.DateTimeFormat().resolvedOptions().timeZone || 'غير معروف'),
+                    device_language: sanitizeInput(navigator.language || 'غير معروف'),
                     
                     // بيانات الجهاز المحدثة والمصنفة تلقائياً
-                    device_type: deviceMeta.type,
-                    device_model: deviceMeta.detail,
+                    device_type: sanitizeInput(deviceMeta.type),
+                    device_model: sanitizeInput(deviceMeta.detail),
                     screen_resolution: `${window.screen.width}x${window.screen.height}`,
                     cpu_cores: navigator.hardwareConcurrency || 'غير معروف',
                     ram_gb: navigator.deviceMemory ? `${navigator.deviceMemory} GB` : 'غير معروف',
-                    battery_level: batteryInfo.level,
-                    battery_charging: batteryInfo.charging,
+                    battery_level: sanitizeInput(batteryInfo.level),
+                    battery_charging: sanitizeInput(batteryInfo.charging),
                     adblock_active: hasAdBlock ? 'مفعل 🛡️' : 'غير مفعل ❌',
                     is_vpn: isVpnOrProxy,
                     risk_score: riskLevel,
-                    user_agent: navigator.userAgent,
+                    user_agent: sanitizeInput(navigator.userAgent),
                     timestamp: firebase.firestore.FieldValue.serverTimestamp()
                 };
 
